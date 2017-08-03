@@ -10,7 +10,7 @@ Create a Tree factory with annotations to control logging behaviors.
         @Echo("{\"Level\":\"W\"}")
         Tree createTree();
 
-        @Custom("{\"Package\":\"android.log.utils.sample\"}")
+        @Custom("{\"Package\":\"woods.log.sample\"}")
         CatcherTree createCatcherTree();
     }
 ```
