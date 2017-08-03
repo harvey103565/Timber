@@ -16,9 +16,9 @@ gen/
 out/
 
 # Gradle files
-gradle.properties
-gradle/
 .gradle/
+gradle/
+gradle.properties
 build/
 
 # Local configuration file (sdk path, etc)
