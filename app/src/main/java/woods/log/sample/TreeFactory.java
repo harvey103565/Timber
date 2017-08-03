@@ -10,11 +10,11 @@ import woods.log.timber.Tree;
  * Interface to generate trees used in woods
  */
 public interface TreeFactory {
-    @Paper("{\"Thread\":\"http-thread\",\"Class\":\"LoginActivity\"," +
+    @Paper("{\"Thread\":\"http-thread\",\"Class\":\"SampleActivity\"," +
             "\"Filters\":[\"V\",\"I\",\"W\",\"E\",\"A\"]}")
     @Echo("{\"Level\":\"W\"}")
     Tree createTree();
 
-    @Custom("{\"Package\":\"android.log.utils.sample\"}")
+    @Custom("{\"Package\":\"woods.log.sample\"}")
     CatcherTree createCatcherTree();
 }
