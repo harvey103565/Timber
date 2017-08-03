@@ -3,6 +3,7 @@ Customized version derived from JakeWharton's timber project. Flexible logging t
 
 # Basic Usage:
 Create a Tree factory with annotations to control logging behaviors.
+```
     public interface TreeFactory {
         @Paper("{\"Thread\":\"http-thread\",\"Class\":\"LoginActivity\"," +
                 "\"Filters\":[\"V\",\"I\",\"W\",\"E\",\"A\"]}")
@@ -12,9 +13,10 @@ Create a Tree factory with annotations to control logging behaviors.
         @Custom("{\"Package\":\"android.log.utils.sample\"}")
         CatcherTree createCatcherTree();
     }
-
+```
 And then build init Timber with builder()
+```
     Timber.builder()
             .addTreeFactory(TreeFactory.class)
             .build();
-
+```
