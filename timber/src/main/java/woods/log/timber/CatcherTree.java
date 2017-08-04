@@ -1,82 +1,16 @@
 package woods.log.timber;
 
-import android.support.annotation.NonNull;
-
 /**
  * A tree catches un-handle exception and monitor memory leak
  */
 
-public class CatcherTree implements Tree {
+public class CatcherTree implements Plant {
 
     // Save input policy here
     private Policy Policy = null;
 
     // Save system default UncaughtException here
     private Thread.UncaughtExceptionHandler defaultHandler = null;
-
-    @Override
-    public Tree tag(String tag) {
-        return this;
-    }
-
-    @Override
-    public Tree policy(Policy policy) {
-        Policy = policy;
-        return this;
-    }
-
-    @Override
-    public Tree prober(Prober prober) {
-        return this;
-    }
-
-    @Override
-    public void v(@NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void v(@NonNull Throwable t, @NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void d(@NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void d(@NonNull Throwable t, @NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void i(@NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void i(@NonNull Throwable t, @NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void w(@NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void w(@NonNull Throwable t, @NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void e(@NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void e(@NonNull Throwable t, @NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void wtf(@NonNull String message, Object... args) {
-    }
-
-    @Override
-    public void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
-    }
 
     @Override
     public void plant() {
