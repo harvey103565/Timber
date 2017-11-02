@@ -1,101 +1,256 @@
 package woods.log.timber;
 
-
 import android.support.annotation.NonNull;
+import java.util.IllegalFormatException;
 
 
 /**
- * This code is a modified copy from JakeWharton's timber project
- * You can find the original code at Github. Url: "https://github.com/JakeWharton/timber"
- * Changes:
- * - Add policy(), prober(), plant(), uproot() methods to interface 'Tree'
+ * A facade for handling logging calls.
  */
+public abstract class Tree implements Wood {
 
+    private boolean[] Switches = {false, false, true, true, true, true, false};
 
-public interface Tree {
+    protected final static int VERBOSE = Level.V.ordinal();
+
+    protected final static int DEBUG = Level.D.ordinal();
+
+    protected final static int WARN = Level.W.ordinal();
+
+    protected final static int INFO = Level.I.ordinal();
+
+    protected final static int ERROR = Level.E.ordinal();
+
+    protected final static int WTF = Level.A.ordinal();
+
 
     /**
-     * Set tag for logs.
+     * Logging policy that should be applied in order to control
      */
-    Tree tag(String tag);
+    protected Tip opTip = null;
+
+    protected Probe envProbe = null;
+
 
     /**
-     * Set logging policy for a tree.
+     * Set tag for log message
      */
-    Tree policy(Policy policy);
-
-    /**
-     * Set set prober to a tree.
-     */
-    Tree prober(Prober prober);
+    @Override
+    public Wood tag(String tag) {
+        return this;
+    }
 
     /**
      * Log a verbose message with optional format args.
      */
-    void v(@NonNull String message, Object... args);
+    @Override
+    public void v(@NonNull String message, Object... args) {
+        if (Switches[VERBOSE]) {
+            prelog(VERBOSE, null, message, args);
+        }
+    }
 
     /**
      * Log a verbose exception and a message with optional format args.
      */
-    void v(@NonNull Throwable t, @NonNull String message, Object... args);
+    @Override
+    public void v(@NonNull Throwable t, @NonNull String message, Object... args) {
+        if (Switches[VERBOSE]) {
+            prelog(VERBOSE, t, message, args);
+        }
+    }
 
     /**
      * Log a debug message with optional format args.
      */
-    void d(@NonNull String message, Object... args);
+    @Override
+    public void d(@NonNull String message, Object... args) {
+        if (Switches[DEBUG]) {
+            prelog(DEBUG, null, message, args);
+        }
+    }
 
     /**
      * Log a debug exception and a message with optional format args.
      */
-    void d(@NonNull Throwable t, @NonNull String message, Object... args);
+    @Override
+    public void d(@NonNull Throwable t, @NonNull String message, Object... args) {
+        if (Switches[DEBUG]) {
+            prelog(DEBUG, t, message, args);
+        }
+    }
 
     /**
      * Log an info message with optional format args.
      */
-    void i(@NonNull String message, Object... args);
+    @Override
+    public void i(@NonNull String message, Object... args) {
+        if (Switches[INFO]) {
+            prelog(INFO, null, message, args);
+        }
+    }
 
     /**
      * Log an info exception and a message with optional format args.
      */
-    void i(@NonNull Throwable t, @NonNull String message, Object... args);
+    @Override
+    public void i(@NonNull Throwable t, @NonNull String message, Object... args) {
+        if (Switches[INFO]) {
+            prelog(INFO, t, message, args);
+        }
+    }
 
     /**
      * Log a warning message with optional format args.
      */
-    void w(@NonNull String message, Object... args);
+    @Override
+    public void w(@NonNull String message, Object... args) {
+        if (Switches[WARN]) {
+            prelog(WARN, null, message, args);
+        }
+    }
 
     /**
      * Log a warning exception and a message with optional format args.
      */
-    void w(@NonNull Throwable t, @NonNull String message, Object... args);
+    @Override
+    public void w(@NonNull Throwable t, @NonNull String message, Object... args) {
+        if (Switches[WARN]) {
+            prelog(WARN, t, message, args);
+        }
+    }
 
     /**
      * Log an error message with optional format args.
      */
-    void e(@NonNull String message, Object... args);
+    @Override
+    public void e(@NonNull String message, Object... args) {
+        if (Switches[ERROR]) {
+            prelog(ERROR, null, message, args);
+        }
+    }
 
     /**
      * Log an error exception and a message with optional format args.
      */
-    void e(@NonNull Throwable t, @NonNull String message, Object... args);
+    @Override
+    public void e(@NonNull Throwable t, @NonNull String message, Object... args) {
+        if (Switches[ERROR]) {
+            prelog(ERROR, t, message, args);
+        }
+    }
 
     /**
      * Log an assert message with optional format args.
      */
-    void wtf(@NonNull String message, Object... args);
+    @Override
+    public void wtf(@NonNull String message, Object... args) {
+        if (Switches[WTF]) {
+            prelog(WTF, null, message, args);
+        }
+    }
 
     /**
      * Log an assert exception and a message with optional format args.
      */
-    void wtf(@NonNull Throwable t, @NonNull String message, Object... args);
+    @Override
+    public void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
+        if (Switches[WTF]) {
+            prelog(WTF, t, message, args);
+        }
+    }
+
+    @Override
+    public void onplant(Probe probe) {
+        if (probe == null) {
+            throw new AssertionError("Plant tree without valid environment probe.");
+        }
+
+        envProbe = probe;
+    }
+
+    @Override
+    public void onuproot() {
+    }
+
+    @Override
+    public void pin(String notes) {
+        opTip = Tools.parseTipString(notes);
+
+        if (opTip == null) {
+            return;
+        }
+
+        if (opTip.Level != null) {
+            applyLoggingLevel(opTip.Level);
+        }
+
+        if (opTip.Filters != null) {
+            applyFilters(opTip.Filters);
+        }
+    }
 
     /**
-     * Called when tree is added into forest.
+     * Get tag ready and Convert message & args to log string.
      */
-    void plant();
+    private void prelog(int priority, Throwable t, @NonNull String message, Object... args) {
+        if (!isLoggable()) {
+            return;
+        }
+
+        String tag = (envProbe == null ? "Timber-No-Tag" : envProbe.getTag());
+
+        if (args.length > 0) {
+            try {
+                message = String.format(message, args);
+            } catch (IllegalFormatException e) {
+                message = "Discard log due to illegal formatting.";
+            }
+        }
+
+        log(priority, tag, message, t);
+    }
 
     /**
-     * Called when tree is removed from forest.
+     * The function that performs actual logging action.
+     *
+     * @param priority The priority/type of this log message
+     * @param tag      Used to identify the source of a log message.  It usually identifies
+     *                 the class or activity where the log call occurs.
+     * @param message  The message you would like logged.
+     * @param t        An exception to log.
      */
-    void uproot();
+    abstract public void log(int priority, String tag, String message, Throwable t);
+
+    protected void applyFilters(Level[] filters) {
+        for (Level f : filters) {
+            Switches[f.ordinal()] = true;
+        }
+    }
+
+    protected void applyLoggingLevel(Level l) {
+        int k = l.ordinal();
+
+        for (int i = 0; i < k; i++) {
+            Switches[i] = false;
+        }
+        for (int i = k, n = Switches.length; i < n; i++) {
+            Switches[i] = true;
+        }
+    }
+
+    private boolean isLoggable() {
+        if (opTip == null || envProbe == null) {
+            return true;
+        }
+
+        String t = envProbe.getThreadName();
+        if (opTip.Thread != null && !opTip.Thread.equals(t)) {
+            return false;
+        }
+
+        String cls = envProbe.getClassName();
+        return !(opTip.Class != null && !opTip.Class.equals(cls));
+    }
 }
+

@@ -137,7 +137,7 @@ public class Tools {
      * @return Stack trace string
      */
     static public String serializeException(@NonNull Throwable t) {
-        StringBuilder sb = new StringBuilder("\r\n");
+        StringBuilder sb = new StringBuilder();
 
         Writer writer = new StringWriter();
         PrintWriter printWriter = new PrintWriter(writer);
@@ -264,16 +264,16 @@ public class Tools {
         // because Robolectric runs them on the JVM but on Android the elements are different.
         StackTraceElement[] stackTrace = new Throwable().getStackTrace();
         if (stackTrace.length <= pos) {
-            throw new IllegalStateException
-                    ("Synthetic stacktrace didn'Tree have enough elements: are you using proguard?");
+            throw new AssertionError
+                    ("Synthetic stacktrace didn'Plant have enough elements: are you using proguard?");
         }
         return stackTrace[pos];
     }
 
-    public static Policy parsePolicyString(String json) {
+    public static Tip parseTipString(String json) {
         Moshi moshi = new Moshi.Builder()
                 .build();
-        JsonAdapter<Policy> jsonAdapter = moshi.adapter(Policy.class);
+        JsonAdapter<Tip> jsonAdapter = moshi.adapter(Tip.class);
 
         try {
             return jsonAdapter.fromJson(json);

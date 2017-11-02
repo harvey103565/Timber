@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.text.SimpleDateFormat;
 import java.util.Locale;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 
 /**
@@ -62,26 +63,37 @@ import java.util.Locale;
  * or defaults to "brief"
  */
 
-public class MemoTree extends LogTree {
+public class MemoTree extends Tree {
 
     private static final String ACCURATETIME = "MM-dd HH-mm-ss.SSS";
 
     private static final String BRIEFTIME = "MM-dd HH-mm";
 
-    private volatile String StoreDirectory = null;
+    private static final Level[] levelArray = Level.values();
 
-    private Prober Prober = null;
+    private volatile String storeDirectory = null;
 
-    private Policy Policy = null;
+    private final ConcurrentLinkedQueue<String> messageList = new ConcurrentLinkedQueue<>();
 
-    private MemoThread WorkerThread = null;
+    private Probe envProbe = null;
+
+    private DumperThread dumperThread = null;
+
+    private WriterThread wirterThread = null;
+
+    private boolean dumpEnabled = false;
+
+    private boolean writeEnabled = false;
+
+    private String catalogString = null;
+
+    private String cliString = null;
 
 
-    private final class MemoThread extends Thread {
+    private class MemoThread extends Thread {
+        boolean _Running = false;
 
-        private boolean _Running = false;
-
-        public void startThread() {
+        void startThread() {
             boolean running;
 
             synchronized (this) {
@@ -94,7 +106,7 @@ public class MemoTree extends LogTree {
             }
         }
 
-        public void stopThread() {
+        void stopThread() {
             boolean running;
 
             synchronized (this) {
@@ -106,36 +118,34 @@ public class MemoTree extends LogTree {
                 interrupt();
             }
         }
+    }
 
-        private String buildCommand(Policy policy) {
-            StringBuilder cb = new StringBuilder("logcat --pid=")
-                    .append(Tools.getHostProcessId())
-                    .append(" -v thread");
+    private final class WriterThread extends MemoThread {
 
-            if (policy != null) {
-                if (policy.Level != null) {
-                    cb.append(" *:").append(policy.Level);
+        public void run() {
+            try {
+                while (_Running) {
+                    writerLoop();
+                    sleep(1000);
                 }
-
-                if (policy.Class != null) {
-                    cb.append(" | grep ").append(policy.Class);
-                }
+            } catch (InterruptedException e) {
+                stopThread();
+                Timber.w(e, "WriterThread thread quit.");
             }
-
-            return cb.toString();
         }
+    }
+
+    private final class DumperThread extends MemoThread {
 
         @Override
         public void run() {
             String ffn = "";
-            String cmd = buildCommand(Policy);
             try {
-                Process Process = Runtime.getRuntime().exec(cmd);
+                Process Process = Runtime.getRuntime().exec(cliString);
                 InputStream input = Process.getInputStream();
                 BufferedReader mReader = new BufferedReader(new InputStreamReader(input), 4096);
 
-                Tools.flatDirectory(StoreDirectory, Tools.MAX_HOURS_TO_KEEP);
-                ffn = generateFullBookName(StoreDirectory, Policy.Level.name());
+                ffn = generateFullBookName(storeDirectory, opTip.Level.name());
                 File file = Tools.makeFile(ffn);
 
                 SimpleDateFormat tf = new SimpleDateFormat(ACCURATETIME, Locale.CHINA);
@@ -149,17 +159,17 @@ public class MemoTree extends LogTree {
                         line = mReader.readLine();
                         if (line == null) {
                             sleep(1000);
+                        } else {
+                            StringBuilder tb = new StringBuilder(
+                                    tf.format(System.currentTimeMillis()));
+                            writer.write(tb.append(" ").append(line).append("\n")
+                                    .toString());
                         }
-
-                        StringBuilder tb = new StringBuilder(
-                                tf.format(System.currentTimeMillis()));
-                        writer.write(tb.append(" ").append(line).append("\n")
-                                .toString());
                     }
                 } catch (InterruptedException e) {
                     Process.destroy();
                     stopThread();
-                    Timber.w(e, "Worker thread quit.");
+                    Timber.w(e, "Dumper Thread thread quit.");
                 } finally {
                     writer.close();
                 }
@@ -170,93 +180,111 @@ public class MemoTree extends LogTree {
     }
 
     @Override
-    public Tree policy(Policy policy) {
-        super.policy(policy);
-
-        Policy = policy;
-        if (Policy.Level == null) {
-            Policy.Level = Level.W;
-        }
-
-        return this;
-    }
-
-    @Override
-    public Tree prober(Prober prober) {
-        super.prober(prober);
-
-        if (prober == null) {
-            throw new AssertionError("Prober could not be null!");
-        }
-        Prober = prober;
-
-        StoreDirectory = prober.getStoragePath();
-        if (StoreDirectory == null) {
-            Timber.e("No store directory detected.");
-        }
-        try {
-            Tools.makeDirectory(StoreDirectory);
-        } catch (IOException e) {
-            applyLoggingLevel(Level.S);
-        }
-
-        tryWakingWorker();
-
-        return this;
-    }
-
-    @Override
     public void log(int priority, String tag, String message, Throwable t) {
-        if (StoreDirectory == null) {
+        if (storeDirectory == null) {
             return;
         }
 
-        String ffn = generateFullPaperName(StoreDirectory);
-        File file = new File(ffn);
+        StringBuilder msb = new StringBuilder();
 
-        FileOutputStream fos;
-        try {
-            if (file.createNewFile()) {
-                fos = new FileOutputStream(file);
-                try {
-                    fos.write(message.getBytes());
-                    if (t != null) {
-                        fos.write("\n".getBytes());
-                        fos.write(Tools.serializeException(t).getBytes());
-                    }
-                } finally {
-                    fos.close();
-                }
-            }
-        } catch (IOException e) {
-            applyLoggingLevel(Level.S);
-            Timber.w(e, "Output file Error: %s.", ffn);
+        if (priority < VERBOSE) {
+            msb.append("Supress");
+        } else if (priority > WTF) {
+            msb.append("All");
+        } else {
+            msb.append(levelArray[priority].toString());
         }
+
+        msb.append('-')
+                .append(envProbe.getFileLine())
+                .append(":\n");
+
+        if (t != null) {
+            msb.append(Tools.serializeException(t));
+        }
+
+        messageList.add(msb.toString());
     }
 
     @Override
-    public void plant() {
+    public void onplant(Probe probe) {
+        super.onplant(probe);
+
+        envProbe = probe;
+        storeDirectory = envProbe.getStoragePath();
+        Tools.flatDirectory(storeDirectory, Tools.MAX_HOURS_TO_KEEP);
+        try {
+            Tools.makeDirectory(storeDirectory);
+        } catch (IOException e) {
+            dumpEnabled = false;
+            writeEnabled = false;
+
+            Timber.e(e, "Failed when creating log directory. Abort dumping.");
+            return;
+        }
+
         tryWakingWorker();
     }
 
     @Override
-    public void uproot() {
+    public void onuproot() {
         stopWorkerWorking();
+    }
+
+    @Override
+    public void pin(String notes) {
+        super.pin(notes);
+
+        if (opTip != null) {
+            if (opTip.Level != null) {
+                dumpEnabled = true;
+                cliString = buildCommand(opTip);
+            }
+
+            if (opTip.Filters != null) {
+                writeEnabled = true;
+            }
+        }
     }
 
     private void tryWakingWorker() {
 
-        if (WorkerThread == null) {
-            WorkerThread = new MemoThread();
+        if (storeDirectory == null) {
+            return;
         }
 
-        if (Prober != null && StoreDirectory != null) {
-            WorkerThread.startThread();
+        if (dumpEnabled) {
+            if (dumperThread == null) {
+                dumperThread = new DumperThread();
+            }
+            dumperThread.startThread();
+        }
+
+        if (writeEnabled) {
+            if (wirterThread == null) {
+                wirterThread = new WriterThread();
+            }
+            wirterThread.startThread();
         }
     }
 
     private void stopWorkerWorking() {
-        WorkerThread.stopThread();
+        dumperThread.stopThread();
+    }
+
+
+    private String buildCommand(@NonNull Tip tip) {
+        StringBuilder cb = new StringBuilder("logcat --pid=")
+                .append(Tools.getHostProcessId())
+                .append(" -v thread");
+
+        cb.append(" *:").append(tip.Level);
+
+        if (tip.Class != null) {
+            cb.append(" | grep ").append(tip.Class);
+        }
+
+        return cb.toString();
     }
 
     private String generateFullPaperName(@NonNull String path) {
@@ -264,16 +292,16 @@ public class MemoTree extends LogTree {
         SimpleDateFormat df = new SimpleDateFormat(ACCURATETIME, Locale.CHINA);
 
         ffnb = ffnb.append(File.separator);
-        if (Policy != null && Policy.Catalog != null && !Policy.Catalog.isEmpty()) {
-            ffnb = ffnb.append(Policy.Catalog).append(File.separator);
+        if (catalogString != null) {
+            ffnb = ffnb.append(catalogString).append(File.separator);
         }
         ffnb = ffnb.append(df.format(System.currentTimeMillis()));
 
-        if (null != Prober) {
+        if (null != envProbe) {
             ffnb.append(' ')
-                    .append(Prober.getMethodName())
+                    .append(envProbe.getMethodName())
                     .append('-')
-                    .append(Prober.getFileLine());
+                    .append(envProbe.getFileLine());
         }
 
         return ffnb.toString();
@@ -290,5 +318,29 @@ public class MemoTree extends LogTree {
                 .append(".log");
 
         return ffn.toString();
+    }
+
+    private void writerLoop() {
+        while (!messageList.isEmpty()) {
+            String message = messageList.poll();
+
+            String ffn = generateFullPaperName(storeDirectory);
+            File file = new File(ffn);
+
+            FileOutputStream fos;
+            try {
+                if (file.createNewFile()) {
+                    fos = new FileOutputStream(file);
+                    try {
+                        fos.write(message.getBytes());
+                    } finally {
+                        fos.close();
+                    }
+                }
+            } catch (IOException e) {
+                applyLoggingLevel(Level.S);
+                Timber.w(e, "Output file Error: %s.", ffn);
+            }
+        }
     }
 }

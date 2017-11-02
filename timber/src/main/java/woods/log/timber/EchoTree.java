@@ -2,16 +2,15 @@ package woods.log.timber;
 
 import android.util.Log;
 
+
+
 /**
  * A tree put messages into standard log console
  */
 
-public class DebugTree extends LogTree {
+public class EchoTree extends Tree {
 
     private static final int MAX_LOG_LENGTH = 2048;
-
-    private static final String lineConcatter = "%s\n%s";
-
 
     /**
      * Break up {@code log} into maximum-length chunks (if needed) and send to either
@@ -22,19 +21,20 @@ public class DebugTree extends LogTree {
      */
     @Override
     public void log(int priority, String tag, String message, Throwable t) {
+        StringBuilder ms = new StringBuilder(message);
         if (t != null) {
             String stacktrace = Tools.serializeException(t);
-            message = String.format(lineConcatter, message, stacktrace);
+            ms.append("\n").append(stacktrace);
         }
 
-        if (message.length() < MAX_LOG_LENGTH) {
-            if (priority == Log.ASSERT) {
-                Log.wtf(tag, message);
+        if (ms.length() < MAX_LOG_LENGTH) {
+            if (priority == WTF) {
+                Log.wtf(tag, ms.toString());
             } else {
-                Log.println(priority, tag, message);
+                Log.println(priority, tag, ms.toString());
             }
         } else {
-            logByLines(priority, tag, message);
+            logByLines(priority, tag, ms.toString());
         }
     }
 
@@ -62,14 +62,5 @@ public class DebugTree extends LogTree {
                 i = end;
             } while (i < newline);
         }
-    }
-
-    @Override
-    public void plant() {
-    }
-
-    @Override
-    public void uproot() {
-
     }
 }

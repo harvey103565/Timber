@@ -6,21 +6,26 @@ package woods.log.timber;
 
 public class CatcherTree implements Plant {
 
-    // Save input policy here
-    private Policy Policy = null;
+    private Tip opTip = null;
 
-    // Save system default UncaughtException here
     private Thread.UncaughtExceptionHandler defaultHandler = null;
 
     @Override
-    public void plant() {
-        defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
-        Thread.setDefaultUncaughtExceptionHandler(handler);
+    public void onplant(Probe probe) {
+        if (opTip != null) {
+            defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+            Thread.setDefaultUncaughtExceptionHandler(handler);
+        }
     }
 
     @Override
-    public void uproot() {
+    public void onuproot() {
         Thread.setDefaultUncaughtExceptionHandler(defaultHandler);
+    }
+
+    @Override
+    public void pin(String notes) {
+        opTip = Tools.parseTipString(notes);
     }
 
 
@@ -34,23 +39,18 @@ public class CatcherTree implements Plant {
         }
 
         private void handleException(Throwable throwable) {
-            if (Policy == null) {
+            if (opTip == null) {
                 return;
             }
 
             String t = Tools.getCurrentThreadName();
-            if (Policy.Thread != null && !Policy.Thread.equals(t)) {
+            if (opTip.Thread != null && !opTip.Thread.equals(t)) {
                 return;
             }
 
             StackTraceElement s = throwable.getStackTrace()[0];
             String cls = Tools.getClassNameFromStack(s);
-            if (Policy.Class != null && !Policy.Class.equals(cls)) {
-                return;
-            }
-
-            String p = Tools.getPackageNameFromStack(s);
-            if (Policy.Package != null && !Policy.Package.equals(p)) {
+            if (opTip.Class != null && !opTip.Class.equals(cls)) {
                 return;
             }
 

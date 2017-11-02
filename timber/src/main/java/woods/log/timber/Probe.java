@@ -4,11 +4,19 @@ package woods.log.timber;
  * Interface to get the running Environment
  */
 
-public interface Prober {
+public interface Probe {
     /**
      * Probe the running context parameter
      */
     void probe();
+
+    /**
+     * Set a CustomTag to P
+     */
+    void setCustomTag(String tag);
+
+
+    String getTag();
 
     /**
      * Return the build type of host package

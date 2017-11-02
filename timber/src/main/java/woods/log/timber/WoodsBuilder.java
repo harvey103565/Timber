@@ -13,174 +13,187 @@ import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.reactivex.Observable;
+import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
 
 
 /**
- * An builder to create environment for Woods
+ * An builder to create environment for Wood
  */
 
 public class WoodsBuilder {
 
-    private final Single<String> buildObservable;
+    private Class<?>[] factoryArray = {defaultFactory.class};
+    private ArrayList<Class<?>> allFactories = new ArrayList<Class<?>>();
+    private ArrayList<Plant> allPlants = new ArrayList<Plant>();
 
-    private Class<?>[] creatorClasses = null;
+    private EchoTree defaultTree = new EchoTree();
 
-    private Prober defaultProber = null;
-
-    private ArrayList<Tree> forest = new ArrayList<Tree>();
-
-    private static class PackageMatcher implements Function<Integer, String> {
-        private final Pattern pattern =
-                Pattern.compile("\\b([a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+[0-9a-z_])\\b");
-
-        @Override
-        public String apply(@NonNull Integer id) throws Exception {
-            String ps = "ps " + id;
-            try {
-                Process process = Runtime.getRuntime().exec(ps);
-                BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(process.getInputStream()), 1024);
-
-                reader.readLine();
-                String line = reader.readLine();
-
-                if (line == null || line.isEmpty()) {
-                    Timber.e("Can not invoke ps call, using pid instead.");
-                    return ps;
-                }
-                Matcher matcher = pattern.matcher(line);
-                if (!matcher.find()) {
-                    Timber.e("No package name found, using pid instead.");
-                    return ps;
-                }
-                ps = matcher.group(1);
-            } catch (IOException e) {
-                throw new AssertionError("Fail to get input stream from ps call.");
-            }
-            return ps;
-        }
+    private interface defaultFactory {
+        EchoTree aPlant();
     }
 
-    private class BuilderObserver implements SingleObserver<String> {
-
-        @Override
-        public void onSubscribe(@NonNull Disposable d) {
-
-        }
-
-        @Override
-        public void onSuccess(@NonNull String packageName) {
-            defaultProber = new DefaultProber(packageName);
-
-            if (creatorClasses != null) {
-                for (Class<?> creator : creatorClasses) {
-                    Method[] methods = creator.getDeclaredMethods();
-                    for (Method method : methods) {
-                        buildMethod(method, forest);
-                    }
-                }
-
-                if (forest.size() > 0) {
-                    Timber.plant(forest.toArray(new Tree[forest.size()]));
-                }
-            }
-
-            Timber.asTree().prober(defaultProber);
-        }
-
-        @Override
-        public void onError(@NonNull Throwable e) {
-            Timber.wtf(e, "Fail parsing package name by pid.");
-        }
-    }
 
     public WoodsBuilder() {
-        buildObservable = Single.just(Tools.getHostProcessId())
-                .map(new PackageMatcher())
-                .subscribeOn(Schedulers.newThread());
     }
 
-
-    public WoodsBuilder addTreeFactory(@NonNull Class<?>... creators) {
-        creatorClasses = creators;
+    public WoodsBuilder addTreeFactory(@NonNull Class<?>... factories) {
+        Collections.addAll(allFactories, factories);
+        factoryArray = allFactories.toArray(new Class<?>[allFactories.size()]);
         return this;
     }
 
     public void build() {
-        buildObservable.subscribe(new BuilderObserver());
-    }
+        Timber.plant(defaultTree);
 
-
-    private void buildMethod(@NonNull Method method, @NonNull ArrayList<Tree> forest) {
-        Class<?> t = method.getReturnType();
-
-        if (Tree.class.isAssignableFrom(t)) {
-            if (t.equals(Tree.class)) {
-                Tree[] trees = fromAnnotation(method.getAnnotations());
-                Collections.addAll(forest, trees);
-            } else if (t.isInterface() || Modifier.isAbstract(t.getModifiers())) {
-                throw new AssertionError("Creator return type can not be instanced.", null);
-            } else {
-                Custom custom = null;
-                if (method.isAnnotationPresent(Custom.class)) {
-                    custom = method.getAnnotation(Custom.class);
-                }
-
-                Tree tree = fromLocalClass(t, custom);
-                forest.add(tree);
-            }
-        } else {
-            throw new AssertionError("Creator must return Tree implementation.", null);
-        }
-    }
-
-    private Tree[] fromAnnotation(Annotation[] annotations) {
-        Tree[] trees = new Tree[annotations.length];
-
-        for (int i = 0, n = annotations.length; i < n; i = i + 1) {
-            String json;
-            if (annotations[i] instanceof Echo) {
-                trees[i] = new DebugTree();
-                Echo echo = (Echo) annotations[i];
-                json = echo.value();
-            } else if (annotations[i] instanceof Paper) {
-                trees[i] = new MemoTree();
-                Paper paper = (Paper) annotations[i];
-                json = paper.value();
-            } else if (annotations[i] instanceof Catcher) {
-                trees[i] = new CatcherTree();
-                Catcher catcher = (Catcher) annotations[i];
-                json = catcher.value();
-            } else {
-                throw new AssertionError("Specify a Tree implementation for annotation: "
-                        + annotations[i].getClass().getName(), null);
-            }
-
-            trees[i].policy(Tools.parsePolicyString(json));
+        if (allFactories.isEmpty()) {
+            return;
         }
 
-        return trees;
+        Observable.fromArray(factoryArray)
+                .flatMap(new Function<Class<?>, ObservableSource<Method>>() {
+                    @Override
+                    public ObservableSource<Method> apply(@NonNull Class<?> aClass) throws Exception {
+                        return Observable.fromArray(aClass.getMethods());
+                    }
+                })
+                .map(new Function<Method, Plant>() {
+                    @Override
+                    public Plant apply(@NonNull Method method) throws Exception {
+                        return plantFromMethod(method);
+                    }
+                })
+                .subscribe(new Observer<Plant>() {
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onNext(@NonNull Plant plant) {
+                        allPlants.add(plant);
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e) {
+                        throw new AssertionError(e);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                    }
+                });
+
+        Single.just(Tools.getHostProcessId())
+                .subscribeOn(Schedulers.newThread())
+                .map(new Function<Integer, String>() {
+                    @Override
+                    public String apply(@NonNull Integer id) throws Exception {
+                        return matchPackageName(id);
+                    }
+                })
+                .map(new Function<String, Probe>() {
+                    @Override
+                    public Probe apply(@NonNull String pns) throws Exception {
+                        return createProbe(pns);
+                    }
+                })
+                .subscribe(new SingleObserver<Probe>() {
+                    @Override
+                    public void onSubscribe(@NonNull Disposable d) {
+                    }
+
+                    @Override
+                    public void onSuccess(@NonNull Probe probe) {
+                        for (Plant plant : allPlants) {
+                            plantAPlant(plant, probe);
+                        }
+                        Timber.asTree().onplant(probe);
+                        Timber.uproot(defaultTree);
+                        Timber.v("Go Timber. Go! ");
+                    }
+
+                    @Override
+                    public void onError(@NonNull Throwable e) {
+                    }
+                });
     }
 
-    private Tree fromLocalClass(@NonNull Class<?> t, Custom custom) {
+    private String matchPackageName(@NonNull Integer id) throws Exception {
+        final Pattern pattern =
+                Pattern.compile("\\b([a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+[0-9a-z_])\\b");
+
+        String ps = "ps " + id;
         try {
-            Tree tree = (Tree) t.newInstance();
+            Process process = Runtime.getRuntime().exec(ps);
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()), 1024);
 
-            if (custom != null) {
-                String json = custom.value();
-                tree.policy(Tools.parsePolicyString(json));
+            reader.readLine();
+            String line = reader.readLine();
+
+            if (line == null || line.isEmpty()) {
+                Timber.e("Can not invoke ps call, using pid instead.");
+                return ps;
             }
-
-            return tree;
-        } catch (InstantiationException e) {
-            throw new AssertionError(t.getName() + " missing default constructor?", e);
-        } catch (IllegalAccessException e) {
-            throw new AssertionError("Could not load class: " + t.getName(), e);
+            Matcher matcher = pattern.matcher(line);
+            if (!matcher.find()) {
+                Timber.e("No package name found, using pid instead.");
+                return ps;
+            }
+            ps = matcher.group(1);
+        } catch (IOException e) {
+            throw new AssertionError("Fail to get input stream from ps call.");
         }
+        return ps;
+    }
+
+    private Plant plantFromMethod(@NonNull Method method) {
+        Class<?> plantClass = method.getReturnType();
+
+        if (!Plant.class.isAssignableFrom(plantClass) || plantClass.isInterface() ||
+                Modifier.isAbstract(plantClass.getModifiers())) {
+            throw new AssertionError(plantClass.getName() + " type can not be instanced.", null);
+        }
+
+        Plant plant;
+        try {
+            plant = (Plant) plantClass.newInstance();
+        } catch (InstantiationException e) {
+            throw new AssertionError(plantClass.getName() + " missing default constructor?", e);
+        } catch (IllegalAccessException e) {
+            throw new AssertionError("Could not load class: " + plantClass.getName(), e);
+        }
+
+        Annotation[] annotations = method.getAnnotations();
+        if (annotations.length > 1) {
+            throw new AssertionError("One annotation for each method.", null);
+        }
+        Pin notes = method.getAnnotation(Pin.class);
+        plant.pin(notes.value());
+
+        return plant;
+    }
+
+    private Probe plantAPlant(@NonNull Plant plant, Probe probe) {
+        plant.onplant(probe);
+        Timber.plant(plant);
+
+        return probe;
+    }
+
+    private Probe createProbe(@NonNull String pns) {
+        if (pns.isEmpty()) {
+            throw new AssertionError("Empty package name found.");
+        }
+
+        return new EnvironProbe(pns);
     }
 }

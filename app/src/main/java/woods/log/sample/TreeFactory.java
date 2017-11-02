@@ -1,20 +1,24 @@
 package woods.log.sample;
 
 import woods.log.timber.CatcherTree;
-import woods.log.timber.Custom;
-import woods.log.timber.Echo;
-import woods.log.timber.Paper;
-import woods.log.timber.Tree;
+import woods.log.timber.EchoTree;
+import woods.log.timber.MemoTree;
+import woods.log.timber.Pin;
 
 /**
  * Interface to generate trees used in woods
  */
 public interface TreeFactory {
-    @Paper("{\"Thread\":\"http-thread\",\"Class\":\"SampleActivity\"," +
-            "\"Filters\":[\"V\",\"I\",\"W\",\"E\",\"A\"]}")
-    @Echo("{\"Level\":\"W\"}")
-    Tree createTree();
+/*
+ *
+ *
+*/
+    @Pin("{\"Class\":\"SampleActivity\", \"Filters\":[\"V\",\"I\",\"W\",\"E\",\"A\"]}")
+    EchoTree createDebugTree();
 
-    @Custom("{\"Package\":\"woods.log.sample\"}")
+    @Pin("{\"Level\":\"W\", \"Thread\":\"main\"}")
+    MemoTree createMemoTree();
+
+    @Pin("{\"Package\":\"woods.log.sample\"}")
     CatcherTree createCatcherTree();
 }

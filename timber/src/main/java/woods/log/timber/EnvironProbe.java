@@ -8,21 +8,47 @@ import java.io.File;
  *
  */
 
-public class DefaultProber implements Prober {
+public class EnvironProbe implements Probe {
 
     private static final int CALL_STACK_INDEX = 5;
 
     private final String PackageName;
 
-    private StackTraceElement TraceElement = null;
+    private final ThreadLocal<StackTraceElement> ThreadTraces;
 
-    public DefaultProber(String packageName) {
+    private final ThreadLocal<String> ThreadTag;
+
+
+    public EnvironProbe(String packageName) {
         PackageName = packageName;
+        ThreadTraces = new ThreadLocal<>();
+        ThreadTag = new ThreadLocal<>();
     }
 
     @Override
     public void probe() {
-        TraceElement = Tools.getStackTrace(CALL_STACK_INDEX);
+        StackTraceElement TraceElement = Tools.getStackTrace(CALL_STACK_INDEX);
+        // TODO: OnError process when stacktrace not available
+        ThreadTraces.set(TraceElement);
+    }
+
+    @Override
+    public void setCustomTag(String tag) {
+        ThreadTag.remove();
+        ThreadTag.set(tag);
+    }
+
+    @Override
+    public String getTag() {
+        String customTag = ThreadTag.get();
+
+        if (customTag != null) {
+            ThreadTag.remove();
+        } else {
+            customTag = getClassName();
+        }
+
+        return customTag;
     }
 
     @Override
@@ -42,6 +68,8 @@ public class DefaultProber implements Prober {
 
     @Override
     public String getClassName() {
+        StackTraceElement TraceElement = ThreadTraces.get();
+
         if (TraceElement == null) {
             throw new AssertionError("Probe() not invoked, forget? ", null);
         }
@@ -51,6 +79,8 @@ public class DefaultProber implements Prober {
 
     @Override
     public String getPackageName() {
+        StackTraceElement TraceElement = ThreadTraces.get();
+
         if (TraceElement == null) {
             throw new AssertionError("Probe() not invoked, forget? ", null);
         }
@@ -65,6 +95,8 @@ public class DefaultProber implements Prober {
 
     @Override
     public String getMethodName() {
+        StackTraceElement TraceElement = ThreadTraces.get();
+
         if (TraceElement == null) {
             throw new AssertionError("Probe() not invoked, forget? ", null);
         }
@@ -74,12 +106,14 @@ public class DefaultProber implements Prober {
 
     @Override
     public String getFileLine() {
+        StackTraceElement TraceElement = ThreadTraces.get();
+
         if (TraceElement == null) {
             throw new AssertionError("Probe() not invoked, forget? ", null);
         }
 
         StringBuilder builder = new StringBuilder(TraceElement.getFileName());
 
-        return builder.append(TraceElement.getLineNumber()).toString();
+        return builder.append(':').append(TraceElement.getLineNumber()).toString();
     }
 }
