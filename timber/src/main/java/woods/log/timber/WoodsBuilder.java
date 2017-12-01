@@ -19,77 +19,85 @@ import io.reactivex.Observer;
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.Function;
+import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
 
 
 /**
- * An builder to create environment for Wood
+ * An builder to create environment for Tree
  */
 
 public class WoodsBuilder {
 
-    private Class<?>[] factoryArray = {defaultFactory.class};
-    private ArrayList<Class<?>> allFactories = new ArrayList<Class<?>>();
-    private ArrayList<Plant> allPlants = new ArrayList<Plant>();
+    private ArrayList<Class<?>> Factories = new ArrayList<Class<?>>();
 
-    private EchoTree defaultTree = new EchoTree();
-
-    private interface defaultFactory {
-        EchoTree aPlant();
-    }
+    private EchoTree defEchoTree = new EchoTree();
 
 
     public WoodsBuilder() {
     }
 
     public WoodsBuilder addTreeFactory(@NonNull Class<?>... factories) {
-        Collections.addAll(allFactories, factories);
-        factoryArray = allFactories.toArray(new Class<?>[allFactories.size()]);
+        Collections.addAll(Factories, factories);
         return this;
     }
 
     public void build() {
-        Timber.plant(defaultTree);
+        Timber.plant(defEchoTree);
 
-        if (allFactories.isEmpty()) {
+        if (Factories.isEmpty()) {
             return;
         }
 
-        Observable.fromArray(factoryArray)
+        ConnectableObservable<Method> methodObservable =
+                Observable.fromArray(Factories.toArray(new Class<?>[Factories.size()]))
                 .flatMap(new Function<Class<?>, ObservableSource<Method>>() {
                     @Override
                     public ObservableSource<Method> apply(@NonNull Class<?> aClass) throws Exception {
                         return Observable.fromArray(aClass.getMethods());
                     }
                 })
-                .map(new Function<Method, Plant>() {
+                .publish();
+
+        methodObservable
+                .map(new Function<Method, Tree>() {
                     @Override
-                    public Plant apply(@NonNull Method method) throws Exception {
+                    public Tree apply(@NonNull Method method) throws Exception {
                         return plantFromMethod(method);
                     }
-                })
-                .subscribe(new Observer<Plant>() {
-                    @Override
-                    public void onSubscribe(@NonNull Disposable d) {
+                });
+//                .subscribe(new Observer<Tree>() {
+//                    @Override
+//                    public void onSubscribe(@NonNull Disposable d) {
+//                        Timber.supervise();
+//                    }
+//
+//                    @Override
+//                    public void onNext(@NonNull Tree tree) {
+//                        Timber.plant(tree);
+//                    }
+//
+//                    @Override
+//                    public void onError(@NonNull Throwable e) {
+//                        Timber.wtf(e, "Error creating tree object.");
+//                    }
+//
+//                    @Override
+//                    public void onComplete() {
+//                        Timber.uproot(defEchoTree);
+//                        Timber.v("Go Timber. Go! ");
+//                    }
+//                });
 
-                    }
-
+        methodObservable
+                .map(new Function<Method, Tip>() {
                     @Override
-                    public void onNext(@NonNull Plant plant) {
-                        allPlants.add(plant);
-                    }
-
-                    @Override
-                    public void onError(@NonNull Throwable e) {
-                        throw new AssertionError(e);
-                    }
-
-                    @Override
-                    public void onComplete() {
+                    public Tip apply(@NonNull Method method) throws Exception {
+                        return tipFromMethod(method);
                     }
                 });
+
 
         Single.just(Tools.getHostProcessId())
                 .subscribeOn(Schedulers.newThread())
@@ -99,29 +107,18 @@ public class WoodsBuilder {
                         return matchPackageName(id);
                     }
                 })
-                .map(new Function<String, Probe>() {
-                    @Override
-                    public Probe apply(@NonNull String pns) throws Exception {
-                        return createProbe(pns);
-                    }
-                })
-                .subscribe(new SingleObserver<Probe>() {
+                .subscribe(new SingleObserver<String>() {
                     @Override
                     public void onSubscribe(@NonNull Disposable d) {
                     }
 
                     @Override
-                    public void onSuccess(@NonNull Probe probe) {
-                        for (Plant plant : allPlants) {
-                            plantAPlant(plant, probe);
-                        }
-                        Timber.asTree().onplant(probe);
-                        Timber.uproot(defaultTree);
-                        Timber.v("Go Timber. Go! ");
+                    public void onSuccess(@NonNull String procname) {
                     }
 
                     @Override
                     public void onError(@NonNull Throwable e) {
+                        Timber.wtf(e, "Error getting package name.");
                     }
                 });
     }
@@ -155,45 +152,35 @@ public class WoodsBuilder {
         return ps;
     }
 
-    private Plant plantFromMethod(@NonNull Method method) {
+    private Tree plantFromMethod(@NonNull Method method) {
         Class<?> plantClass = method.getReturnType();
 
-        if (!Plant.class.isAssignableFrom(plantClass) || plantClass.isInterface() ||
+        if (!Tree.class.isAssignableFrom(plantClass) || plantClass.isInterface() ||
                 Modifier.isAbstract(plantClass.getModifiers())) {
             throw new AssertionError(plantClass.getName() + " type can not be instanced.", null);
         }
 
-        Plant plant;
+        Tree tree;
         try {
-            plant = (Plant) plantClass.newInstance();
+            tree = (Tree) plantClass.newInstance();
         } catch (InstantiationException e) {
             throw new AssertionError(plantClass.getName() + " missing default constructor?", e);
         } catch (IllegalAccessException e) {
             throw new AssertionError("Could not load class: " + plantClass.getName(), e);
         }
 
+        tree.pin(notes.value());
+
+        return tree;
+    }
+
+    private Tip tipFromMethod(@NonNull Method method) {
         Annotation[] annotations = method.getAnnotations();
         if (annotations.length > 1) {
             throw new AssertionError("One annotation for each method.", null);
         }
         Pin notes = method.getAnnotation(Pin.class);
-        plant.pin(notes.value());
 
-        return plant;
-    }
-
-    private Probe plantAPlant(@NonNull Plant plant, Probe probe) {
-        plant.onplant(probe);
-        Timber.plant(plant);
-
-        return probe;
-    }
-
-    private Probe createProbe(@NonNull String pns) {
-        if (pns.isEmpty()) {
-            throw new AssertionError("Empty package name found.");
-        }
-
-        return new EnvironProbe(pns);
+        return Tools.parseTipString(notes.value());
     }
 }
