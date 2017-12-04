@@ -16,9 +16,8 @@ import java.util.regex.Pattern;
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
 import io.reactivex.Observer;
-import io.reactivex.Single;
-import io.reactivex.SingleObserver;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.BiFunction;
 import io.reactivex.functions.Function;
 import io.reactivex.observables.ConnectableObservable;
 import io.reactivex.schedulers.Schedulers;
@@ -60,37 +59,15 @@ public class WoodsBuilder {
                 })
                 .publish();
 
-        methodObservable
+        Observable<Tree> treeObservable = methodObservable
                 .map(new Function<Method, Tree>() {
                     @Override
                     public Tree apply(@NonNull Method method) throws Exception {
                         return plantFromMethod(method);
                     }
                 });
-//                .subscribe(new Observer<Tree>() {
-//                    @Override
-//                    public void onSubscribe(@NonNull Disposable d) {
-//                        Timber.supervise();
-//                    }
-//
-//                    @Override
-//                    public void onNext(@NonNull Tree tree) {
-//                        Timber.plant(tree);
-//                    }
-//
-//                    @Override
-//                    public void onError(@NonNull Throwable e) {
-//                        Timber.wtf(e, "Error creating tree object.");
-//                    }
-//
-//                    @Override
-//                    public void onComplete() {
-//                        Timber.uproot(defEchoTree);
-//                        Timber.v("Go Timber. Go! ");
-//                    }
-//                });
 
-        methodObservable
+        Observable<Tip> tipObservable = methodObservable
                 .map(new Function<Method, Tip>() {
                     @Override
                     public Tip apply(@NonNull Method method) throws Exception {
@@ -98,29 +75,53 @@ public class WoodsBuilder {
                     }
                 });
 
-
-        Single.just(Tools.getHostProcessId())
+        Observable<String> procObservable = Observable.just(Tools.getHostProcessId())
                 .subscribeOn(Schedulers.newThread())
                 .map(new Function<Integer, String>() {
                     @Override
                     public String apply(@NonNull Integer id) throws Exception {
                         return matchPackageName(id);
                     }
-                })
-                .subscribe(new SingleObserver<String>() {
-                    @Override
-                    public void onSubscribe(@NonNull Disposable d) {
-                    }
+                });
 
+        Observable<Tip> fullObservable = Observable.combineLatest(procObservable,
+                tipObservable, new BiFunction<String, Tip, Tip>() {
                     @Override
-                    public void onSuccess(@NonNull String procname) {
-                    }
-
-                    @Override
-                    public void onError(@NonNull Throwable e) {
-                        Timber.wtf(e, "Error getting package name.");
+                    public Tip apply(String s, Tip tip) throws Exception {
+                        tip.Catalog = s;
+                        return tip;
                     }
                 });
+
+        Observable.zip(fullObservable, treeObservable, new BiFunction<Tip, Tree, Tree>() {
+            @Override
+            public Tree apply(Tip tip, Tree tree) throws Exception {
+                tree.pin(tip);
+                return tree;
+            }
+        })
+                .subscribe(new Observer<Tree>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                    }
+
+                    @Override
+                    public void onNext(Tree tree) {
+                        Timber.plant(tree);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        Timber.wtf(e, "Error getting package name.");
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        Timber.i("Timber build complete.");
+                    }
+                });
+
+        methodObservable.connect();
     }
 
     private String matchPackageName(@NonNull Integer id) throws Exception {
@@ -146,6 +147,9 @@ public class WoodsBuilder {
                 return ps;
             }
             ps = matcher.group(1);
+            if (ps == null) {
+                Timber.wtf("Could not find packagename.");
+            }
         } catch (IOException e) {
             throw new AssertionError("Fail to get input stream from ps call.");
         }
@@ -169,8 +173,6 @@ public class WoodsBuilder {
             throw new AssertionError("Could not load class: " + plantClass.getName(), e);
         }
 
-        tree.pin(notes.value());
-
         return tree;
     }
 
@@ -179,8 +181,10 @@ public class WoodsBuilder {
         if (annotations.length > 1) {
             throw new AssertionError("One annotation for each method.", null);
         }
-        Pin notes = method.getAnnotation(Pin.class);
+        Pin note = method.getAnnotation(Pin.class);
 
-        return Tools.parseTipString(notes.value());
+        Tip tip = Tools.parseTipString(note.value());
+
+        return tip;
     }
 }
