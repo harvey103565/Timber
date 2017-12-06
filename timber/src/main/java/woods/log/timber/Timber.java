@@ -20,6 +20,194 @@ import java.util.List;
 
 public class Timber {
 
+    private static final List<Tree> Forest = new ArrayList<>();
+    private static ThreadLocal<String> Tags = new ThreadLocal<>();
+    private static ThreadLocal<Milieu> Milieus = new ThreadLocal<>();
+    /**
+     * A {@link Tree} that delegates to all planted trees in the {@linkplain #Forest forest}.
+     */
+    private static final Tree TREE_OF_SOULS = new Tree() {
+
+
+        private final Tree[] TREE_ARRAY_EMPTY = new Tree[0];
+
+        private volatile Tree[] forestAsArray = TREE_ARRAY_EMPTY;
+
+
+        /** Set a one-time tag for use on the next logging call. */
+        public Tree tag(@NonNull String tag) {
+            return asTree();
+        }
+
+        @Override
+        public Tree asTree() {
+            return this;
+        }
+
+        @Override
+        public void v(@NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].v(message, args);
+            }
+        }
+
+        @Override
+        public void v(@NonNull Throwable t, @NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].v(t, message, args);
+            }
+        }
+
+        @Override
+        public void d(@NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].d(message, args);
+            }
+        }
+
+        @Override
+        public void d(@NonNull Throwable t, @NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].d(t, message, args);
+            }
+        }
+
+        @Override
+        public void i(@NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].i(message, args);
+            }
+        }
+
+        @Override
+        public void i(@NonNull Throwable t, @NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].i(t, message, args);
+            }
+        }
+
+        @Override
+        public void w(@NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].w(message, args);
+            }
+        }
+
+        @Override
+        public void w(@NonNull Throwable t, @NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].w(t, message, args);
+            }
+        }
+
+        @Override
+        public void e(@NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].e(message, args);
+            }
+        }
+
+        @Override
+        public void e(@NonNull Throwable t, @NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].e(t, message, args);
+            }
+        }
+
+        @Override
+        public void wtf(@NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].wtf(message, args);
+            }
+        }
+
+        @Override
+        public void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
+            Timber.probe();
+
+            Tree[] forest = forestAsArray;
+            //noinspection ForLoopReplaceableByForEach
+            for (int i = 0, count = forest.length; i < count; i++) {
+                forest[i].wtf(t, message, args);
+            }
+        }
+
+        @Override
+        public void plant(@NonNull Tree tree) {
+            synchronized (Forest) {
+                forestAsArray = Forest.toArray(new Tree[Forest.size()]);
+            }
+
+            // We tell the tree being planted about SOUL_OF_TREE
+            tree.plant(this);
+        }
+
+        @Override
+        public void uproot(@NonNull Tree tree) {
+            if (tree == TREE_OF_SOULS) {
+                throw new AssertionError("Uproot a 'Tree of soul'?");
+            }
+
+            forestAsArray = Forest.toArray(new Tree[Forest.size()]);
+
+            // We tell the tree being uprooted about SOUL_OF_TREE
+            tree.uproot(this);
+        }
+
+        @Override
+        public void pin(@NonNull Tip tip) {
+
+        }
+    };
+
+    private Timber() {
+        throw new AssertionError("No instances for 'Timber'.");
+    }
+
     /**
      * Log a verbose message with optional format args.
      */
@@ -107,294 +295,132 @@ public class Timber {
     /**
      * Set a one-time tag for use on the next logging call.
      */
-    public static Wood tag(String tag) {
-        return asTree().tag(tag);
+    public static Tree tag(@NonNull String tag) {
+        Tags.set(tag);
+        return asTree();
+    }
+
+    /**
+     * Probe the milieu for use on the next logging call.
+     */
+    public static Tree probe() {
+        final int CALL_STACK_INDEX = 5;
+
+        String tag = Tags.get();
+        Milieu milieu;
+        if (tag != null) {
+            milieu = new Milieu(tag);
+        } else {
+            StackTraceElement ste = Tools.getStackTrace(CALL_STACK_INDEX);
+            // TODO: OnError process when stacktrace not available
+            milieu = new Milieu(ste);
+        }
+        Milieus.set(milieu);
+
+        return asTree();
+    }
+
+    /**
+     * Probe the milieu for use on the next logging call.
+     */
+    public static Milieu get() {
+
+        Milieu milieu = Milieus.get();
+
+        if (milieu == null) {
+            Timber.probe();
+            milieu = Milieus.get();
+        }
+
+        return milieu;
     }
 
     /**
      * A view into Timber's planted trees as a tree itself. This can be used for injecting a logger
      * instance rather than using static methods or to facilitate testing.
      */
-    public static Wood asTree() {
+    public static Tree asTree() {
         return TREE_OF_SOULS;
     }
 
-
     /**
-     *
+     * Create a builder to initialize woods context.
      */
     public static WoodsBuilder builder() {
         return new WoodsBuilder();
     }
 
-
     /**
      * Adds new logging trees.
      */
-    public static void plant(@NonNull Plant plant) {
-        if (plant == TREE_OF_SOULS) {
+    public static void plant(@NonNull Tree tree) {
+        if (tree == TREE_OF_SOULS) {
             throw new AssertionError("Cannot plant 'TREE_OF_SOULS'.");
         }
 
-        Plants.add(plant);
-
-        if (plant instanceof Wood) {
-            Forest.add((Wood)plant);
-        }
+        asTree().plant(tree);
 
         synchronized (Forest) {
-            forestAsArray = Forest.toArray(new Wood[Forest.size()]);
+            Forest.add(tree);
         }
     }
 
     /**
-     * Remove a planted onplant.
+     * Remove a planted tree.
      */
-    public static void uproot(@NonNull Plant plant) {
+    public static void uproot(@NonNull Tree tree) {
+        synchronized (Forest) {
+            if (!Forest.remove(tree)) {
+                throw new AssertionError("Cannot uproot tree which is not planted: " + tree);
+            }
 
-        synchronized (Plants) {
-            if (!Plants.remove(plant)) {
-                throw new AssertionError("Cannot uproot plant which is not planted: " + plant);
-            }
+            asTree().uproot(tree);
         }
-        if (plant instanceof Wood) {
-            synchronized (Forest) {
-                if (!Forest.remove(plant)) {
-                    throw new AssertionError("Cannot uproot plant which is not planted: " + plant);
-                }
-                forestAsArray = Forest.toArray(new Wood[Forest.size()]);
-            }
-        }
-        plant.onuproot();
     }
 
     /**
      * Remove all planted trees.
      */
-    public static void uprootAll() {
-        Plant[] plants = forestAsArray;
+    public static void uprootall() {
+        Tree[] trees = Forest.toArray(new Tree[Forest.size()]);
 
-        synchronized (Plants) {
-            Plants.clear();
+        for (Tree tree : trees) {
+            asTree().uproot(tree);
         }
 
         synchronized (Forest) {
             Forest.clear();
-            forestAsArray = TREE_ARRAY_EMPTY;
-        }
-
-        for (Plant plant : plants) {
-            plant.onuproot();
         }
     }
 
-
-    private static final Wood[] TREE_ARRAY_EMPTY = new Wood[0];
-
-    private static final List<Plant> Plants = new ArrayList<>();
-
-    private static final List<Wood> Forest = new ArrayList<>();
-
-    private static volatile Wood[] forestAsArray = TREE_ARRAY_EMPTY;
-
     /**
-     * A {@link Wood} that delegates to all planted trees in the {@linkplain #Forest forest}.
+     * Remove all planted trees.
      */
-    private static final Wood TREE_OF_SOULS = new Wood() {
+    public static void supervise() {
+        WoodsUncaughtExceptionHandler handler = new WoodsUncaughtExceptionHandler();
 
-        private Probe EnvProbe = null;
+        handler.setDefaultHandler(Thread.getDefaultUncaughtExceptionHandler());
+        Thread.setDefaultUncaughtExceptionHandler(handler);
+    }
 
-        /** Set a one-time tag for use on the next logging call. */
-        public Wood tag(String tag) {
-            if (EnvProbe != null) {
-                EnvProbe.setCustomTag(tag);
-            }
-            return TREE_OF_SOULS;
+    static class WoodsUncaughtExceptionHandler implements Thread.UncaughtExceptionHandler {
+
+        private Thread.UncaughtExceptionHandler defaultHandler = null;
+
+        void setDefaultHandler(Thread.UncaughtExceptionHandler handler) {
+            defaultHandler = handler;
         }
 
-        @Override
-        public void v(@NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
+        public void uncaughtException(Thread thread, Throwable throwable) {
+            if (throwable != null) {
+                Timber.wtf(throwable, "Unhandled Exception.");
+                // Safe exit
+                Timber.uprootall();
 
-            Wood[] forest = forestAsArray;
-
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].v(message, args);
+                if (defaultHandler != null) {
+                    defaultHandler.uncaughtException(thread, throwable);
+                }
             }
         }
-
-        @Override
-        public void v(@NonNull Throwable t, @NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].v(t, message, args);
-            }
-        }
-
-        @Override
-        public void d(@NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].d(message, args);
-            }
-        }
-
-        @Override
-        public void d(@NonNull Throwable t, @NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].d(t, message, args);
-            }
-        }
-
-        @Override
-        public void i(@NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].i(message, args);
-            }
-        }
-
-        @Override
-        public void i(@NonNull Throwable t, @NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].i(t, message, args);
-            }
-        }
-
-        @Override
-        public void w(@NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].w(message, args);
-            }
-        }
-
-        @Override
-        public void w(@NonNull Throwable t, @NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].w(t, message, args);
-            }
-        }
-
-        @Override
-        public void e(@NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].e(message, args);
-            }
-        }
-
-        @Override
-        public void e(@NonNull Throwable t, @NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].e(t, message, args);
-            }
-        }
-
-        @Override
-        public void wtf(@NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].wtf(message, args);
-            }
-        }
-
-        @Override
-        public void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
-            if (!envprobe()) {
-                return;
-            }
-
-            Wood[] forest = forestAsArray;
-            //noinspection ForLoopReplaceableByForEach
-            for (int i = 0, count = forest.length; i < count; i++) {
-                forest[i].wtf(t, message, args);
-            }
-        }
-
-        @Override
-        public void onplant(Probe probe) {
-            EnvProbe = probe;
-        }
-
-        @Override
-        public void onuproot() {
-            throw new AssertionError("Uproot a 'Tree of soul'?");
-        }
-
-        @Override
-        public void pin(String notes) {
-
-        }
-
-        private boolean envprobe() {
-            if (EnvProbe == null) {
-                return false;
-            }
-
-            EnvProbe.probe();
-            return true;
-        }
-    };
-
-    private Timber() {
-        throw new AssertionError("No instances for 'Timber'.");
     }
 }

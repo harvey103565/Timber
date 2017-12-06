@@ -1,6 +1,5 @@
 package woods.log.sample;
 
-import woods.log.timber.CatcherTree;
 import woods.log.timber.EchoTree;
 import woods.log.timber.MemoTree;
 import woods.log.timber.Pin;
@@ -13,12 +12,9 @@ public interface TreeFactory {
  *
  *
 */
-    @Pin("{\"Class\":\"SampleActivity\", \"Filters\":[\"V\",\"I\",\"W\",\"E\",\"A\"]}")
+@Pin("{\"Class\":\"SampleActivity\", \"Level\":\"V\"}")
     EchoTree createDebugTree();
 
-    @Pin("{\"Level\":\"W\", \"Thread\":\"main\"}")
+    @Pin("{\"Level\":\"W\", \"Thread\":\"main\", \"Filters\":[\"I\",\"E\",\"A\"]}")
     MemoTree createMemoTree();
-
-    @Pin("{\"Package\":\"woods.log.sample\"}")
-    CatcherTree createCatcherTree();
 }

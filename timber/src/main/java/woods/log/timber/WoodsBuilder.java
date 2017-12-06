@@ -148,7 +148,7 @@ public class WoodsBuilder {
             }
             ps = matcher.group(1);
             if (ps == null) {
-                Timber.wtf("Could not find packagename.");
+                k Timber.wtf("Could not find packagename.");
             }
         } catch (IOException e) {
             throw new AssertionError("Fail to get input stream from ps call.");

@@ -8,7 +8,7 @@ import android.util.Log;
  * A tree put messages into standard log console
  */
 
-public class EchoTree extends Tree {
+public class EchoTree extends Wood {
 
     private static final int MAX_LOG_LENGTH = 2048;
 

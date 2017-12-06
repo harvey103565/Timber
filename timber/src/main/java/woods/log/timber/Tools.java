@@ -249,13 +249,18 @@ public class Tools {
      * <p>
      */
     public static String getPackageNameFromStack(StackTraceElement element) {
-        String tag = element.getClassName();
-        Matcher m = ANONYMOUS_CLASS.matcher(tag);
+        String fullname = element.getClassName();
+        String file = element.getFileName();
+        String cls = file.substring(0, file.indexOf('.'));
+
+        String pkname = String.format("\\b([a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+)(?=\\.%s.*)\\b",
+                cls);
+        Matcher m = Pattern.compile(pkname).matcher(fullname);
         if (m.find()) {
-            tag = m.replaceAll("");
+            return m.group(0);
         }
-        tag = tag.substring(tag.lastIndexOf('.') + 1);
-        return tag.length() > MAX_TAG_LENGTH ? tag.substring(0, MAX_TAG_LENGTH) : tag;
+
+        return null;
     }
 
     public static StackTraceElement getStackTrace(int pos) {

@@ -71,13 +71,17 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
                 // app-defined int constant. The callback method gets the
                 // result of the request.
             }
+        } else {
+            Timber.builder()
+                    .addTreeFactory(TreeFactory.class)
+                    .build();
         }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        Timber.uprootAll();
+        Timber.uprootall();
     }
 
     @OnClick(R.id.button)
@@ -130,7 +134,7 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
         }
 
         if (checkBoxThr.isChecked()) {
-            throw new RuntimeException("Trigger runtime exception test.");
+            throw new IllegalArgumentException("Trigger runtime exception test.");
         }
     }
 
@@ -140,6 +144,8 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
         Timber.builder()
                 .addTreeFactory(TreeFactory.class)
                 .build();
+
+        Timber.supervise();
     }
 
 }
