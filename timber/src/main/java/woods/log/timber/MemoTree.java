@@ -141,15 +141,13 @@ public class MemoTree extends Wood {
     public void pin(@NonNull Tip tip) {
         super.pin(tip);
 
-        if (tip != null) {
-            if (tip.Level != null) {
-                dumpEnabled = true;
-                cliString = buildCommand(tip);
-            }
+        if (tip.Level != null) {
+            dumpEnabled = true;
+            cliString = buildCommand(tip);
+        }
 
-            if (tip.Filters != null) {
-                writeEnabled = true;
-            }
+        if (tip.Filters != null) {
+            writeEnabled = true;
         }
     }
 

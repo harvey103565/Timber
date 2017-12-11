@@ -54,11 +54,16 @@ public class EchoTree extends Wood {
             do {
                 int end = Math.min(newline, i + MAX_LOG_LENGTH);
                 String part = message.substring(i, end);
-                if (priority == Log.ASSERT) {
-                    Log.wtf(tag, part);
-                } else {
-                    Log.println(priority, tag, part);
-                }
+/**
+ *              We dont' want to exit program here
+ *              if (priority == Log.ASSERT) {
+ *                  Log.wtf(tag, part);
+ *              } else {
+ *                  Log.println(priority, tag, part);
+ *              }
+ *
+ */
+                Log.println(priority == WTF ? Log.ERROR : priority, tag, part);
                 i = end;
             } while (i < newline);
         }

@@ -163,6 +163,7 @@ public class Timber {
             for (int i = 0, count = forest.length; i < count; i++) {
                 forest[i].wtf(message, args);
             }
+            // TODO: deal with "What a Terrible Failure" 
         }
 
         @Override
@@ -174,6 +175,8 @@ public class Timber {
             for (int i = 0, count = forest.length; i < count; i++) {
                 forest[i].wtf(t, message, args);
             }
+
+            // TODO: deal with "What a Terrible Failure"
         }
 
         @Override
@@ -303,33 +306,32 @@ public class Timber {
     /**
      * Probe the milieu for use on the next logging call.
      */
-    public static Tree probe() {
+    private static void probe() {
         final int CALL_STACK_INDEX = 5;
 
         String tag = Tags.get();
-        Milieu milieu;
-        if (tag != null) {
-            milieu = new Milieu(tag);
-        } else {
-            StackTraceElement ste = Tools.getStackTrace(CALL_STACK_INDEX);
-            // TODO: OnError process when stacktrace not available
-            milieu = new Milieu(ste);
-        }
-        Milieus.set(milieu);
 
-        return asTree();
+        if (tag == null) {
+            // Supervise new thread the first time timber is called
+            if (Milieus.get() == null) {
+                Timber.supervise();
+            }
+            StackTraceElement ste = Tools.getStackTrace(CALL_STACK_INDEX);
+            Milieus.set(new Milieu(ste));
+        } else {
+            Milieus.set(new Milieu(tag));
+        }
     }
 
     /**
      * Probe the milieu for use on the next logging call.
      */
-    public static Milieu get() {
+    static Milieu get() {
 
         Milieu milieu = Milieus.get();
 
         if (milieu == null) {
-            Timber.probe();
-            milieu = Milieus.get();
+            throw new AssertionError("tag() or probe() have not been called before logging.");
         }
 
         return milieu;
