@@ -85,6 +85,10 @@ public class MemoTree extends Wood {
 
     private String cliString = null;
 
+    private int levelCount = levelArray.length;
+
+    private FileOutputStream[] fileOutputStreams = {null, null, null, null, null, null, null};
+
     @Override
     public void log(int priority, String tag, String message, Throwable t) {
         if (storeDirectory == null) {
@@ -118,9 +122,10 @@ public class MemoTree extends Wood {
     public void plant(@NonNull Tree tree) {
         super.plant(tree);
 
-        if (tip != null && tip.Catalog != null) {
-            createCatalog(tip.Catalog);
+        if (Tips != null && Tips.Package != null) {
+            createCatalog(Tips.Package);
         } else {
+            Timber.probe();
             Milieu milieu = Timber.get();
             if (milieu.packageName != null) {
                 createCatalog(milieu.packageName);
@@ -138,16 +143,22 @@ public class MemoTree extends Wood {
     }
 
     @Override
-    public void pin(@NonNull Tip tip) {
-        super.pin(tip);
+    public void pin(@NonNull Tips tips) {
+        super.pin(tips);
 
-        if (tip.Level != null) {
+        if (tips.Level != null) {
             dumpEnabled = true;
-            cliString = buildCommand(tip);
+            cliString = buildCommand(tips);
         }
 
-        if (tip.Filters != null) {
+        if (tips.Filters != null) {
             writeEnabled = true;
+        }
+    }
+
+    @Override
+    protected void applyFilters(Level[] filters) {
+        for (Level f : filters) {
         }
     }
 
@@ -200,15 +211,15 @@ public class MemoTree extends Wood {
         dumperThread.stopThread();
     }
 
-    private String buildCommand(@NonNull Tip tip) {
+    private String buildCommand(@NonNull Tips tips) {
         StringBuilder cb = new StringBuilder("logcat --pid=")
                 .append(Tools.getHostProcessId())
                 .append(" -v thread");
 
-        cb.append(" *:").append(tip.Level);
+        cb.append(" *:").append(tips.Level);
 
-        if (tip.Class != null) {
-            cb.append(" | grep ").append(tip.Class);
+        if (tips.Class != null) {
+            cb.append(" | grep ").append(tips.Class);
         }
 
         return cb.toString();
@@ -326,7 +337,7 @@ public class MemoTree extends Wood {
                 InputStream input = Process.getInputStream();
                 BufferedReader mReader = new BufferedReader(new InputStreamReader(input), 4096);
 
-                ffn = generateFullBookName(storeDirectory, tip.Level.name());
+                ffn = generateFullBookName(storeDirectory, Tips.Level.name());
                 File file = Tools.makeFile(ffn);
 
                 SimpleDateFormat tf = new SimpleDateFormat(ACCURATETIME, Locale.CHINA);

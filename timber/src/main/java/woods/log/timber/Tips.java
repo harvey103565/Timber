@@ -3,7 +3,7 @@ package woods.log.timber;
 /**
  * A configuration for trees
  */
-public class Tip {
+public class Tips {
 
     /**
      * Switches that indicates log channel to open
@@ -28,5 +28,5 @@ public class Tip {
     /**
      * Specified to catalog
      */
-    String Catalog;
+    String Package;
 }

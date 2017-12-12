@@ -2,8 +2,10 @@ package woods.log.timber;
 
 
 import android.support.annotation.NonNull;
+import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.IllegalFormatException;
 import java.util.List;
 
 
@@ -163,7 +165,11 @@ public class Timber {
             for (int i = 0, count = forest.length; i < count; i++) {
                 forest[i].wtf(message, args);
             }
-            // TODO: deal with "What a Terrible Failure" 
+
+            /**
+             * ASSERT LEVEL message will be handled by SOUL OF TREE
+             */
+            assertlog(null, message, args);
         }
 
         @Override
@@ -176,7 +182,28 @@ public class Timber {
                 forest[i].wtf(t, message, args);
             }
 
-            // TODO: deal with "What a Terrible Failure"
+            /**
+             * ASSERT LEVEL message will be handled by SOUL OF TREE
+             */
+            assertlog(t, message, args);
+        }
+
+        private void assertlog(Throwable t, @NonNull String message, Object... args) {
+            if (args.length > 0) {
+                try {
+                    message = String.format(message, args);
+                } catch (IllegalFormatException e) {
+                    message = message + "(Args aren't formative.)" ;
+                }
+            }
+
+            Milieu milieu = Timber.get();
+
+            if (t != null) {
+                Log.wtf(milieu.Tag, message, t);
+            } else {
+                Log.wtf(milieu.Tag, message);
+            }
         }
 
         @Override
@@ -202,7 +229,7 @@ public class Timber {
         }
 
         @Override
-        public void pin(@NonNull Tip tip) {
+        public void pin(@NonNull Tips tips) {
 
         }
     };
@@ -285,14 +312,14 @@ public class Timber {
      * Log an assert message with optional format args.
      */
     public static void wtf(@NonNull String message, Object... args) {
-        asTree().wtf(message, args);
+        asTree().e(message, args);
     }
 
     /**
      * Log an assert exception and a message with optional format args.
      */
     public static void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
-        asTree().wtf(t, message, args);
+        asTree().e(t, message, args);
     }
 
     /**
@@ -306,7 +333,7 @@ public class Timber {
     /**
      * Probe the milieu for use on the next logging call.
      */
-    private static void probe() {
+    public static void probe() {
         final int CALL_STACK_INDEX = 5;
 
         String tag = Tags.get();
@@ -326,7 +353,7 @@ public class Timber {
     /**
      * Probe the milieu for use on the next logging call.
      */
-    static Milieu get() {
+    public static Milieu get() {
 
         Milieu milieu = Milieus.get();
 
@@ -413,14 +440,14 @@ public class Timber {
             defaultHandler = handler;
         }
 
-        public void uncaughtException(Thread thread, Throwable throwable) {
-            if (throwable != null) {
-                Timber.wtf(throwable, "Unhandled Exception.");
-                // Safe exit
+        public void uncaughtException(Thread thread, Throwable t) {
+            if (t != null) {
+                Timber.e(t, t.getMessage());
+
                 Timber.uprootall();
 
                 if (defaultHandler != null) {
-                    defaultHandler.uncaughtException(thread, throwable);
+                    defaultHandler.uncaughtException(thread, t);
                 }
             }
         }

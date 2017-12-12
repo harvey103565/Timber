@@ -67,10 +67,10 @@ public class WoodsBuilder {
                     }
                 });
 
-        Observable<Tip> tipObservable = methodObservable
-                .map(new Function<Method, Tip>() {
+        Observable<Tips> tipObservable = methodObservable
+                .map(new Function<Method, Tips>() {
                     @Override
-                    public Tip apply(@NonNull Method method) throws Exception {
+                    public Tips apply(@NonNull Method method) throws Exception {
                         return tipFromMethod(method);
                     }
                 });
@@ -84,19 +84,21 @@ public class WoodsBuilder {
                     }
                 });
 
-        Observable<Tip> fullObservable = Observable.combineLatest(procObservable,
-                tipObservable, new BiFunction<String, Tip, Tip>() {
+        Observable<Tips> fullObservable = Observable.combineLatest(procObservable,
+                tipObservable, new BiFunction<String, Tips, Tips>() {
                     @Override
-                    public Tip apply(String s, Tip tip) throws Exception {
-                        tip.Catalog = s;
+                    public Tips apply(String s, Tips tip) throws Exception {
+                        if (tip.Package == null) {
+                            tip.Package = s;
+                        }
                         return tip;
                     }
                 });
 
-        Observable.zip(fullObservable, treeObservable, new BiFunction<Tip, Tree, Tree>() {
+        Observable.zip(fullObservable, treeObservable, new BiFunction<Tips, Tree, Tree>() {
             @Override
-            public Tree apply(Tip tip, Tree tree) throws Exception {
-                tree.pin(tip);
+            public Tree apply(Tips tips, Tree tree) throws Exception {
+                tree.pin(tips);
                 return tree;
             }
         })
@@ -176,15 +178,15 @@ public class WoodsBuilder {
         return tree;
     }
 
-    private Tip tipFromMethod(@NonNull Method method) {
+    private Tips tipFromMethod(@NonNull Method method) {
         Annotation[] annotations = method.getAnnotations();
         if (annotations.length > 1) {
             throw new AssertionError("One annotation for each method.", null);
         }
         Pin note = method.getAnnotation(Pin.class);
 
-        Tip tip = Tools.parseTipString(note.value());
+        Tips tips = Tools.parseTipString(note.value());
 
-        return tip;
+        return tips;
     }
 }

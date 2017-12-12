@@ -26,7 +26,7 @@ interface Tree {
     /**
      * Apply notation to the tree
      */
-    void pin(@NonNull Tip tip);
+    void pin(@NonNull Tips tips);
 
     /**
      * Set a one-time tag for use on the next logging call.

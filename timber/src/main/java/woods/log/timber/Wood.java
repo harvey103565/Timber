@@ -19,7 +19,7 @@ public abstract class Wood implements Tree {
     /**
      * Logging policy that should be applied in order to control
      */
-    protected Tip tip = null;
+    protected Tips Tips = null;
     private boolean[] Switches = {false, false, true, true, true, true, false};
 
     /**
@@ -45,14 +45,16 @@ public abstract class Wood implements Tree {
      * Apply notation to the tree
      */
     @Override
-    public void pin(@NonNull Tip tip) {
-        if (tip.Level != null) {
-            applyLoggingLevel(tip.Level);
+    public void pin(@NonNull Tips tips) {
+        if (tips.Level != null) {
+            applyLoggingLevel(tips.Level);
         }
 
-        if (tip.Filters != null) {
-            applyFilters(tip.Filters);
+        if (tips.Filters != null) {
+            applyFilters(tips.Filters);
         }
+
+        Tips = tips;
     }
 
     /**
@@ -204,7 +206,7 @@ public abstract class Wood implements Tree {
             try {
                 message = String.format(message, args);
             } catch (IllegalFormatException e) {
-                message = "Discard log due to illegal formatting.";
+                message = message + "(Args aren't formative.)" ;
             }
         }
 

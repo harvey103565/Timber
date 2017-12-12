@@ -275,10 +275,10 @@ public class Tools {
         return stackTrace[pos];
     }
 
-    public static Tip parseTipString(String json) {
+    public static Tips parseTipString(String json) {
         Moshi moshi = new Moshi.Builder()
                 .build();
-        JsonAdapter<Tip> jsonAdapter = moshi.adapter(Tip.class);
+        JsonAdapter<Tips> jsonAdapter = moshi.adapter(Tips.class);
 
         try {
             return jsonAdapter.fromJson(json);
