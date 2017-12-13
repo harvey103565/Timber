@@ -222,7 +222,7 @@ public class Tools {
                 }
             }
         } catch (SecurityException e) {
-            Timber.wtf(e, "Do not have privilege to access %s", path);
+            Timber.e(e, "Do not have privilege to access %s", path);
         }
     }
 
@@ -283,7 +283,7 @@ public class Tools {
         try {
             return jsonAdapter.fromJson(json);
         } catch (IOException e) {
-            Timber.wtf(e, "Unknown policy: %s.", json);
+            Timber.e(e, "Unknown policy: %s.", json);
         }
         return null;
     }

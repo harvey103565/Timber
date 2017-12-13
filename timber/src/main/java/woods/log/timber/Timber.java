@@ -165,11 +165,6 @@ public class Timber {
             for (int i = 0, count = forest.length; i < count; i++) {
                 forest[i].wtf(message, args);
             }
-
-            /**
-             * ASSERT LEVEL message will be handled by SOUL OF TREE
-             */
-            assertlog(null, message, args);
         }
 
         @Override
@@ -180,29 +175,6 @@ public class Timber {
             //noinspection ForLoopReplaceableByForEach
             for (int i = 0, count = forest.length; i < count; i++) {
                 forest[i].wtf(t, message, args);
-            }
-
-            /**
-             * ASSERT LEVEL message will be handled by SOUL OF TREE
-             */
-            assertlog(t, message, args);
-        }
-
-        private void assertlog(Throwable t, @NonNull String message, Object... args) {
-            if (args.length > 0) {
-                try {
-                    message = String.format(message, args);
-                } catch (IllegalFormatException e) {
-                    message = message + "(Args aren't formative.)" ;
-                }
-            }
-
-            Milieu milieu = Timber.get();
-
-            if (t != null) {
-                Log.wtf(milieu.Tag, message, t);
-            } else {
-                Log.wtf(milieu.Tag, message);
             }
         }
 
@@ -312,14 +284,18 @@ public class Timber {
      * Log an assert message with optional format args.
      */
     public static void wtf(@NonNull String message, Object... args) {
-        asTree().e(message, args);
+        asTree().wtf(message, args);
+
+        throw new AssertionError("Assertion abort.");
     }
 
     /**
      * Log an assert exception and a message with optional format args.
      */
     public static void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
-        asTree().e(t, message, args);
+        asTree().wtf(t, message, args);
+
+        throw new AssertionError("Assertion abort.", t);
     }
 
     /**

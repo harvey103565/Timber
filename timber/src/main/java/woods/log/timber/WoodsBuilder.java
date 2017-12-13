@@ -114,7 +114,7 @@ public class WoodsBuilder {
 
                     @Override
                     public void onError(Throwable e) {
-                        Timber.wtf(e, "Error getting package name.");
+                        Timber.e(e, "Error getting package name.");
                     }
 
                     @Override

@@ -182,7 +182,7 @@ public class MemoTree extends Wood {
             dumpEnabled = false;
             writeEnabled = false;
 
-            Timber.wtf(e, "Failed when creating log directory. Abort dumping.");
+            Timber.e(e, "Failed when creating log directory. Abort dumping.");
         }
     }
 
@@ -344,7 +344,8 @@ public class MemoTree extends Wood {
 
                 FileOutputStream os = new FileOutputStream(file);
                 OutputStreamWriter ow = new OutputStreamWriter(os);
-                try (BufferedWriter writer = new BufferedWriter(ow)) {
+                BufferedWriter writer = new BufferedWriter(ow);
+                try  {
                     String line;
                     while (_Running) {
                         line = mReader.readLine();
@@ -361,6 +362,9 @@ public class MemoTree extends Wood {
                     Process.destroy();
                     stopThread();
                     Timber.w(e, "Dumper Thread thread quit.");
+                } finally {
+                    os.close();
+                    writer.close();
                 }
             } catch (IOException e) {
                 Timber.w(e, "I/O Stream Error: %s", ffn);
