@@ -2,15 +2,13 @@ package woods.log.timber;
 
 
 import android.support.annotation.NonNull;
-import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.IllegalFormatException;
 import java.util.List;
 
 
 /**
- * This code is a modified copy from JakeWharton's timber project
+ * This code is packagename modified copy from JakeWharton's timber project
  * You can find the original code at Github. Url: "https://github.com/JakeWharton/timber"
  * Changes:
  * - Remove class DebugLog
@@ -23,20 +21,22 @@ import java.util.List;
 public class Timber {
 
     private static final List<Tree> Forest = new ArrayList<>();
+
+//    private static final Tree[] TREE_ARRAY_EMPTY = new Tree[0];
+
+    private static volatile Tree[] forestAsArray = null;
+
     private static ThreadLocal<String> Tags = new ThreadLocal<>();
+
     private static ThreadLocal<Milieu> Milieus = new ThreadLocal<>();
+
+
     /**
      * A {@link Tree} that delegates to all planted trees in the {@linkplain #Forest forest}.
      */
     private static final Tree TREE_OF_SOULS = new Tree() {
 
-
-        private final Tree[] TREE_ARRAY_EMPTY = new Tree[0];
-
-        private volatile Tree[] forestAsArray = TREE_ARRAY_EMPTY;
-
-
-        /** Set a one-time tag for use on the next logging call. */
+        /** Set packagename one-time tag for use on the next logging call. */
         public Tree tag(@NonNull String tag) {
             return asTree();
         }
@@ -179,29 +179,17 @@ public class Timber {
         }
 
         @Override
-        public void plant(@NonNull Tree tree) {
-            synchronized (Forest) {
-                forestAsArray = Forest.toArray(new Tree[Forest.size()]);
-            }
-
-            // We tell the tree being planted about SOUL_OF_TREE
-            tree.plant(this);
+        public void plant() {
+            throw new AssertionError("Plant packagename 'soul of tree'?");
         }
 
         @Override
-        public void uproot(@NonNull Tree tree) {
-            if (tree == TREE_OF_SOULS) {
-                throw new AssertionError("Uproot a 'Tree of soul'?");
-            }
-
-            forestAsArray = Forest.toArray(new Tree[Forest.size()]);
-
-            // We tell the tree being uprooted about SOUL_OF_TREE
-            tree.uproot(this);
+        public void uproot() {
+            throw new AssertionError("Uproot packagename 'Tree of soul'?");
         }
 
         @Override
-        public void pin(@NonNull Tips tips) {
+        public void pin(@NonNull Spec spec) {
 
         }
     };
@@ -211,28 +199,28 @@ public class Timber {
     }
 
     /**
-     * Log a verbose message with optional format args.
+     * Log packagename verbose message with optional format args.
      */
     public static void v(@NonNull String message, Object... args) {
         asTree().v(message, args);
     }
 
     /**
-     * Log a verbose exception and a message with optional format args.
+     * Log packagename verbose exception and packagename message with optional format args.
      */
     public static void v(@NonNull Throwable t, @NonNull String message, Object... args) {
         asTree().v(t, message, args);
     }
 
     /**
-     * Log a debug message with optional format args.
+     * Log packagename debug message with optional format args.
      */
     public static void d(@NonNull String message, Object... args) {
         asTree().d(message, args);
     }
 
     /**
-     * Log a debug exception and a message with optional format args.
+     * Log packagename debug exception and packagename message with optional format args.
      */
     public static void d(@NonNull Throwable t, @NonNull String message, Object... args) {
         asTree().d(t, message, args);
@@ -246,21 +234,21 @@ public class Timber {
     }
 
     /**
-     * Log an info exception and a message with optional format args.
+     * Log an info exception and packagename message with optional format args.
      */
     public static void i(@NonNull Throwable t, @NonNull String message, Object... args) {
         asTree().i(t, message, args);
     }
 
     /**
-     * Log a warning message with optional format args.
+     * Log packagename warning message with optional format args.
      */
     public static void w(@NonNull String message, Object... args) {
         asTree().w(message, args);
     }
 
     /**
-     * Log a warning exception and a message with optional format args.
+     * Log packagename warning exception and packagename message with optional format args.
      */
     public static void w(@NonNull Throwable t, @NonNull String message, Object... args) {
         asTree().w(t, message, args);
@@ -274,7 +262,7 @@ public class Timber {
     }
 
     /**
-     * Log an error exception and a message with optional format args.
+     * Log an error exception and packagename message with optional format args.
      */
     public static void e(@NonNull Throwable t, @NonNull String message, Object... args) {
         asTree().e(t, message, args);
@@ -290,7 +278,7 @@ public class Timber {
     }
 
     /**
-     * Log an assert exception and a message with optional format args.
+     * Log an assert exception and packagename message with optional format args.
      */
     public static void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
         asTree().wtf(t, message, args);
@@ -299,7 +287,7 @@ public class Timber {
     }
 
     /**
-     * Set a one-time tag for use on the next logging call.
+     * Set packagename one-time tag for use on the next logging call.
      */
     public static Tree tag(@NonNull String tag) {
         Tags.set(tag);
@@ -341,7 +329,7 @@ public class Timber {
     }
 
     /**
-     * A view into Timber's planted trees as a tree itself. This can be used for injecting a logger
+     * A view into Timber's planted trees as packagename tree itself. This can be used for injecting packagename logger
      * instance rather than using static methods or to facilitate testing.
      */
     public static Tree asTree() {
@@ -349,7 +337,7 @@ public class Timber {
     }
 
     /**
-     * Create a builder to initialize woods context.
+     * Create packagename builder to initialize woods context.
      */
     public static WoodsBuilder builder() {
         return new WoodsBuilder();
@@ -363,24 +351,26 @@ public class Timber {
             throw new AssertionError("Cannot plant 'TREE_OF_SOULS'.");
         }
 
-        asTree().plant(tree);
-
         synchronized (Forest) {
             Forest.add(tree);
         }
+
+        forestAsArray = Forest.toArray(new Tree[Forest.size()]);
     }
 
     /**
-     * Remove a planted tree.
+     * Remove packagename planted tree.
      */
     public static void uproot(@NonNull Tree tree) {
         synchronized (Forest) {
             if (!Forest.remove(tree)) {
                 throw new AssertionError("Cannot uproot tree which is not planted: " + tree);
             }
-
-            asTree().uproot(tree);
         }
+
+        tree.uproot();
+
+        forestAsArray = Forest.toArray(new Tree[Forest.size()]);
     }
 
     /**
@@ -390,11 +380,7 @@ public class Timber {
         Tree[] trees = Forest.toArray(new Tree[Forest.size()]);
 
         for (Tree tree : trees) {
-            asTree().uproot(tree);
-        }
-
-        synchronized (Forest) {
-            Forest.clear();
+            uproot(tree);
         }
     }
 

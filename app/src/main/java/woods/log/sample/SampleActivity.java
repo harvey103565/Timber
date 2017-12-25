@@ -46,12 +46,9 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
         setContentView(R.layout.activity_sample);
         ButterKnife.bind(this);
 
-        // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
-
-            // Should we show an explanation?
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.READ_CONTACTS)) {
 
@@ -60,9 +57,6 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
                 // sees the explanation, try again to request the permission.
 
             } else {
-
-                // No explanation needed, we can request the permission.
-
                 ActivityCompat.requestPermissions(this,
                         new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
                         MY_PERMISSIONS_REQUEST_WRITE_STORAGE);
@@ -73,7 +67,7 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
             }
         } else {
             Timber.builder()
-                    .addTreeFactory(TreeFactory.class)
+                    .addTreeFactory(Seed.class)
                     .build();
         }
     }
@@ -90,7 +84,7 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
         String textMessage = editText.getText().toString();
 
         if (checkBoxEx.isChecked()) {
-            e = new IOException("This is a test exception for Timber.");
+            e = new IOException("This is packagename test exception for Timber.");
         }
 
         if (e == null) {
@@ -142,7 +136,7 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
                                     @NonNull int[] grantResults) {
 
         Timber.builder()
-                .addTreeFactory(TreeFactory.class)
+                .addTreeFactory(Seed.class)
                 .build();
 
         Timber.supervise();

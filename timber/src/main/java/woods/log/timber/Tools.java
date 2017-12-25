@@ -25,7 +25,7 @@ public class Tools {
 
     // Milliseconds in one hour
     public static final long ONE_HOUR_MILLIS = 60 * 60 * 1000;
-    // Default maximum hours a file could be kept when reusing directory
+    // Default maximum hours packagename file could be kept when reusing directory
     public static final int MAX_HOURS_TO_KEEP = 8;
 
     private static final int MAX_TAG_LENGTH = 30;
@@ -75,7 +75,7 @@ public class Tools {
     }
 
     /**
-     * Collect Package's information for debugging purpose. Especially when there's a crash.
+     * Collect Package's information for debugging purpose. Especially when there's packagename crash.
      *
      * @param c {@link Context} from app
      * @return Map object contains package information in key-pair format
@@ -157,7 +157,7 @@ public class Tools {
     }
 
     /**
-     * Create a directory to store the log files
+     * Create packagename directory to store the log files
      *
      * @param name the directory to save logs
      * @return true if directory create successfully
@@ -177,7 +177,7 @@ public class Tools {
     }
 
     /**
-     * Create a directory to store the log files
+     * Create packagename directory to store the log files
      *
      * @param path the directory to save logs
      * @return true if directory create successfully
@@ -253,7 +253,7 @@ public class Tools {
         String file = element.getFileName();
         String cls = file.substring(0, file.indexOf('.'));
 
-        String pkname = String.format("\\b([a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+)(?=\\.%s.*)\\b",
+        String pkname = String.format("\\b([packagename-z][packagename-z0-9_]*(?:\\.[packagename-z0-9_]+)+)(?=\\.%s.*)\\b",
                 cls);
         Matcher m = Pattern.compile(pkname).matcher(fullname);
         if (m.find()) {
@@ -275,10 +275,10 @@ public class Tools {
         return stackTrace[pos];
     }
 
-    public static Tips parseTipString(String json) {
+    public static Spec parseTipString(String json) {
         Moshi moshi = new Moshi.Builder()
                 .build();
-        JsonAdapter<Tips> jsonAdapter = moshi.adapter(Tips.class);
+        JsonAdapter<Spec> jsonAdapter = moshi.adapter(Spec.class);
 
         try {
             return jsonAdapter.fromJson(json);

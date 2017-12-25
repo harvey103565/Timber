@@ -2,39 +2,76 @@ package woods.log.timber;
 
 import android.support.annotation.NonNull;
 
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+
 /**
  * Created by Harvey bv on 2017/11/28.
  */
 
 public class Milieu {
 
-    public String callerClassName;
+    private static final String ACCURATETIME = "MM-dd HH-mm-ss.SSS";
 
-    public String callerMethodName;
+    private static final SimpleDateFormat dateFormat = new SimpleDateFormat(ACCURATETIME, Locale.CHINA);
 
-    public String threadName;
+    /**
+     * Caller thread
+     */
+    public String thread;
 
-    public String packageName;
+    /**
+     * Caller class
+     */
+    public String who;
 
-    public String fileLine;
+    /**
+     * <Caller method>@File:Line
+     */
+    public String where;
 
-    public String Tag;
+    /**
+     * Tag, what kind of logging
+     */
+    public String what;
 
-    public Milieu(@NonNull StackTraceElement TraceElement) {
-        callerClassName = Tools.getClassNameFromStack(TraceElement);
-        Tag = callerClassName;
+    /**
+     * Date-Time
+     */
+    public String when;
 
-        packageName = Tools.getPackageNameFromStack(TraceElement);
+    /**
+     * Exception, if there is
+     */
+    public Throwable why;
 
-        threadName = Thread.currentThread().getName();
+    /**
+     * Logging level
+     */
+    public Level how;
 
-        callerMethodName = TraceElement.getMethodName();
 
-        StringBuilder builder = new StringBuilder(TraceElement.getFileName());
-        fileLine = builder.append(':').append(TraceElement.getLineNumber()).toString();
+    public String packagename;
+
+
+    public Milieu(@NonNull StackTraceElement trace) {
+        who = Tools.getClassNameFromStack(trace);
+        what = who;
+
+        packagename = Tools.getPackageNameFromStack(trace);
+
+        thread = Thread.currentThread().getName();
+
+        where = String.format(Locale.US,"<%s>@%s:%d", trace.getMethodName(),
+                trace.getFileName(), trace.getLineNumber());
+
+        when = dateFormat.format(System.currentTimeMillis());
     }
 
-    public Milieu(@NonNull String tag) {
-        Tag = tag;
+    public Milieu(@NonNull String what) {
+        this.what = what;
+
+        SimpleDateFormat df = new SimpleDateFormat(ACCURATETIME, Locale.CHINA);
+        when = df.format(System.currentTimeMillis());
     }
 }
