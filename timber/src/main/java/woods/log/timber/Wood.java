@@ -6,6 +6,7 @@ import android.util.Log;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
@@ -74,13 +75,14 @@ public class Wood implements Tree {
     private final static String BRIEFTIME = "MM-dd_HH-mm";
     private final static int MAX_LOG_LENGTH = 2048;
 
-    private final static int VERBOSE = Level.V.ordinal();
-    private final static int DEBUG = Level.D.ordinal();
-    private final static int WARN = Level.W.ordinal();
-    private final static int INFO = Level.I.ordinal();
-    private final static int ERROR = Level.E.ordinal();
-    private final static int WTF = Level.A.ordinal();
-    private final static int ALL = Level.S.ordinal();
+    private final static int ALL = Level.F.Priority();
+    private final static int VERBOSE = Level.V.Priority();
+    private final static int DEBUG = Level.D.Priority();
+    private final static int WARN = Level.W.Priority();
+    private final static int INFO = Level.I.Priority();
+    private final static int ERROR = Level.E.Priority();
+    private final static int WTF = Level.A.Priority();
+    private final static int SUP = Level.S.Priority();
 
     /**
      * Logging policy that should be applied in order to control
@@ -90,12 +92,17 @@ public class Wood implements Tree {
     /**
      * Logging policy that should be applied in order to control
      */
-    private boolean[] Switches = new boolean[ALL];
+    private boolean[] Valves = new boolean[SUP];
 
     /**
-     * Logging policy that should be applied in order to control
+     * Logging process that should be applied in order to control
      */
-    private Process[] Processes = new Process[ALL];
+    private Process[] Procs = new Process[SUP];
+
+    /**
+     * Logging process that should be applied in order to control
+     */
+    private FileOutputStream[] FileOuts = new FileOutputStream[SUP];
 
     /**
      * Called when tree is added into forest.
@@ -145,7 +152,7 @@ public class Wood implements Tree {
      */
     @Override
     public void v(@NonNull String message, Object... args) {
-        if (Switches[VERBOSE]) {
+        if (Valves[VERBOSE]) {
             log(VERBOSE, null, message, args);
         }
     }
@@ -155,7 +162,7 @@ public class Wood implements Tree {
      */
     @Override
     public void v(@NonNull Throwable t, @NonNull String message, Object... args) {
-        if (Switches[VERBOSE]) {
+        if (Valves[VERBOSE]) {
             log(VERBOSE, t, message, args);
         }
     }
@@ -165,7 +172,7 @@ public class Wood implements Tree {
      */
     @Override
     public void d(@NonNull String message, Object... args) {
-        if (Switches[DEBUG]) {
+        if (Valves[DEBUG]) {
             log(DEBUG, null, message, args);
         }
     }
@@ -175,7 +182,7 @@ public class Wood implements Tree {
      */
     @Override
     public void d(@NonNull Throwable t, @NonNull String message, Object... args) {
-        if (Switches[DEBUG]) {
+        if (Valves[DEBUG]) {
             log(DEBUG, t, message, args);
         }
     }
@@ -185,7 +192,7 @@ public class Wood implements Tree {
      */
     @Override
     public void i(@NonNull String message, Object... args) {
-        if (Switches[INFO]) {
+        if (Valves[INFO]) {
             log(INFO, null, message, args);
         }
     }
@@ -195,7 +202,7 @@ public class Wood implements Tree {
      */
     @Override
     public void i(@NonNull Throwable t, @NonNull String message, Object... args) {
-        if (Switches[INFO]) {
+        if (Valves[INFO]) {
             log(INFO, t, message, args);
         }
     }
@@ -205,7 +212,7 @@ public class Wood implements Tree {
      */
     @Override
     public void w(@NonNull String message, Object... args) {
-        if (Switches[WARN]) {
+        if (Valves[WARN]) {
             log(WARN, null, message, args);
         }
     }
@@ -215,7 +222,7 @@ public class Wood implements Tree {
      */
     @Override
     public void w(@NonNull Throwable t, @NonNull String message, Object... args) {
-        if (Switches[WARN]) {
+        if (Valves[WARN]) {
             log(WARN, t, message, args);
         }
     }
@@ -225,7 +232,7 @@ public class Wood implements Tree {
      */
     @Override
     public void e(@NonNull String message, Object... args) {
-        if (Switches[ERROR]) {
+        if (Valves[ERROR]) {
             log(ERROR, null, message, args);
         }
     }
@@ -235,7 +242,7 @@ public class Wood implements Tree {
      */
     @Override
     public void e(@NonNull Throwable t, @NonNull String message, Object... args) {
-        if (Switches[ERROR]) {
+        if (Valves[ERROR]) {
             log(ERROR, t, message, args);
         }
     }
@@ -245,7 +252,7 @@ public class Wood implements Tree {
      */
     @Override
     public void wtf(@NonNull String message, Object... args) {
-        if (Switches[WTF]) {
+        if (Valves[WTF]) {
             log(WTF, null, message, args);
         }
     }
@@ -255,7 +262,7 @@ public class Wood implements Tree {
      */
     @Override
     public void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
-        if (Switches[WTF]) {
+        if (Valves[WTF]) {
             log(WTF, t, message, args);
         }
     }
@@ -323,7 +330,7 @@ public class Wood implements Tree {
 
     private void applyFilters(Level[] filters) {
         for (Level f : filters) {
-            Switches[f.ordinal()] = true;
+            Valves[f.ordinal()] = true;
         }
     }
 
@@ -331,10 +338,10 @@ public class Wood implements Tree {
         int k = l.ordinal();
 
         for (int i = 0; i < k; i++) {
-            Switches[i] = false;
+            Valves[i] = false;
         }
-        for (int i = k, n = Switches.length; i < n; i++) {
-            Switches[i] = true;
+        for (int i = k, n = Valves.length; i < n; i++) {
+            Valves[i] = true;
         }
     }
 
@@ -350,13 +357,13 @@ public class Wood implements Tree {
                 .map(new Function<String, String>() {
                     @Override
                     public String apply(String pkgname) throws Exception {
-                        return createStore(pkgname);
+                        return sitingStore(pkgname);
                     }
                 })
                 .doOnSuccess(new Consumer<String>() {
                     @Override
                     public void accept(String storedir) throws Exception {
-                        clearStore(storedir);
+                        makeStore(storedir);
                     }
                 })
                 .subscribe(new SingleObserver<String>() {
@@ -377,7 +384,7 @@ public class Wood implements Tree {
                 });
     }
 
-    private String createStore(@NonNull String store) {
+    private String sitingStore(@NonNull String store) {
         StringBuilder pathbuilder = new StringBuilder();
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
             pathbuilder.append(Environment.getExternalStorageDirectory().getPath())
@@ -391,9 +398,7 @@ public class Wood implements Tree {
         return pathbuilder.append(File.separator).append(store).toString();
     }
 
-    private void clearStore(@NonNull String storedir) {
-
-        Tools.flatDirectory(storedir, Tools.MAX_HOURS_TO_KEEP);
+    private void makeStore(@NonNull String storedir) {
         try {
             Tools.makeDirectory(storedir);
         } catch (IOException e) {
@@ -403,20 +408,25 @@ public class Wood implements Tree {
         }
     }
 
-    private String buildCliCommand(@NonNull String outfile, String level, String clsname) {
-        StringBuilder cb = new StringBuilder("logcat --pid=")
+    private String buildCliCommand(int tid, Level level, String clsname) {
+        StringBuilder cb = new StringBuilder("logcat -v thread | grep \'\\b")
                 .append(Tools.getHostProcessId())
-                .append(" -v thread");
+                .append("\\b \\b");
+
+        if (tid != -1) {
+            cb.append(tid);
+        } else {
+            cb.append("\\d+");
+        }
+        cb.append("\\b \\b");
 
         if (level != null) {
-            cb.append(" *:").append(level);
+            cb.append(" *:").append(level.name());
         }
 
         if (clsname != null) {
             cb.append(" -e ").append(clsname);
         }
-
-        cb.append(" -f ").append(outfile);
 
         return cb.toString();
     }
@@ -426,12 +436,12 @@ public class Wood implements Tree {
         String memo_cli = "[No definition]";
         try {
             String paper = generatePaperName(storedir, "all");
-            memo_cli = buildCliCommand(paper, Spec.Level.name(), Spec.Class);
-            Processes[ALL] = Runtime.getRuntime().exec(memo_cli);
+            memo_cli = buildCliCommand(0, Spec.Level, null);
+            Procs[ALL] = Runtime.getRuntime().exec(memo_cli);
 
             for (Level level : Spec.Filters) {
                 paper = generatePaperName(storedir, level.name());
-                memo_cli = buildCliCommand(paper, Spec.Level.name(), Spec.Class);
+                memo_cli = buildCliCommand(0, Spec.Level, Spec.Class);
             }
         } catch (IOException e) {
             Timber.e(e, "Fail to run command: %s.", memo_cli);
