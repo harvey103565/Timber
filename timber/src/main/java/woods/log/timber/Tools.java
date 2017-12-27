@@ -25,7 +25,7 @@ public class Tools {
 
     // Milliseconds in one hour
     public static final long ONE_HOUR_MILLIS = 60 * 60 * 1000;
-    // Default maximum hours packagename file could be kept when reusing directory
+    // Default maximum hours pkgname file could be kept when reusing directory
     public static final int MAX_HOURS_TO_KEEP = 8;
 
     private static final int MAX_TAG_LENGTH = 30;
@@ -75,7 +75,7 @@ public class Tools {
     }
 
     /**
-     * Collect Package's information for debugging purpose. Especially when there's packagename crash.
+     * Collect Package's information for debugging purpose. Especially when there's pkgname crash.
      *
      * @param c {@link Context} from app
      * @return Map object contains package information in key-pair format
@@ -157,7 +157,7 @@ public class Tools {
     }
 
     /**
-     * Create packagename directory to store the log files
+     * Create pkgname directory to store the log files
      *
      * @param name the directory to save logs
      * @return true if directory create successfully
@@ -177,7 +177,7 @@ public class Tools {
     }
 
     /**
-     * Create packagename directory to store the log files
+     * Create pkgname directory to store the log files
      *
      * @param path the directory to save logs
      * @return true if directory create successfully
@@ -257,7 +257,7 @@ public class Tools {
         String file = element.getFileName();
         String cls = file.substring(0, file.indexOf('.'));
 
-        String pkname = String.format("\\b([packagename-z][packagename-z0-9_]*(?:\\.[packagename-z0-9_]+)+)(?=\\.%s.*)\\b",
+        String pkname = String.format("\\b([pkgname-z][pkgname-z0-9_]*(?:\\.[pkgname-z0-9_]+)+)(?=\\.%s.*)\\b",
                 cls);
         Matcher m = Pattern.compile(pkname).matcher(fullname);
         if (m.find()) {

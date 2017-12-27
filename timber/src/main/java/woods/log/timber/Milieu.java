@@ -16,17 +16,12 @@ public class Milieu {
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat(ACCURATETIME, Locale.CHINA);
 
     /**
-     * Caller thread
-     */
-    public String thread;
-
-    /**
      * Caller class
      */
     public String who;
 
     /**
-     * <Caller method>@File:Line
+     * Caller method<File Line: #>
      */
     public String where;
 
@@ -50,28 +45,35 @@ public class Milieu {
      */
     public Level how;
 
+    /**
+     * Caller thread
+     */
+    public String thread;
 
-    public String packagename;
+    /**
+     * Caller package
+     */
+    public String pkgname;
 
 
-    public Milieu(@NonNull StackTraceElement trace) {
-        who = Tools.getClassNameFromStack(trace);
-        what = who;
+    public Milieu(@NonNull StackTraceElement trace, String tag) {
+        when = dateFormat.format(System.currentTimeMillis());
 
-        packagename = Tools.getPackageNameFromStack(trace);
-
-        thread = Thread.currentThread().getName();
-
-        where = String.format(Locale.US,"<%s>@%s:%d", trace.getMethodName(),
+        where = String.format(Locale.US,"%s<%s line: %d>", trace.getMethodName(),
                 trace.getFileName(), trace.getLineNumber());
 
-        when = dateFormat.format(System.currentTimeMillis());
+        who = Tools.getClassNameFromStack(trace);
+
+        what = (tag == null ? who : tag);
+
+        pkgname = Tools.getPackageNameFromStack(trace);
+
+        thread = Thread.currentThread().getName();
     }
 
-    public Milieu(@NonNull String what) {
-        this.what = what;
-
-        SimpleDateFormat df = new SimpleDateFormat(ACCURATETIME, Locale.CHINA);
-        when = df.format(System.currentTimeMillis());
+    public void bind(@NonNull Level level, Throwable thr, String trd) {
+        how = level;
+        why = thr;
+        thread = trd;
     }
 }
