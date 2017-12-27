@@ -355,6 +355,8 @@ public class Timber {
             Forest.add(tree);
         }
 
+        tree.plant();
+
         forestAsArray = Forest.toArray(new Tree[Forest.size()]);
     }
 

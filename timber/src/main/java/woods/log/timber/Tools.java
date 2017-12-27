@@ -205,19 +205,23 @@ public class Tools {
      * @param path the directory to clear
      */
     static public void flatDirectory(@NonNull String path, int hours) {
-        File logDir = new File(path);
-        long nm = System.currentTimeMillis();
+        File dir = new File(path);
+        long millis = System.currentTimeMillis();
 
         try {
-            if (logDir.exists()) {
-                for (File file : logDir.listFiles()) {
-                    if (!file.isDirectory()) {
-                        long mm = file.lastModified();
-                        if ((nm - mm) > (hours * ONE_HOUR_MILLIS)) {
-                            if (!file.delete()) {
-                                Timber.w("File not delete: %s/%s", file.getPath(), file.getName());
-                            }
-                        }
+            if (!dir.exists()) {
+                return;
+            }
+
+            for (File file : dir.listFiles()) {
+                long dt = millis - file.lastModified();
+                if (0 > dt || dt > (hours * ONE_HOUR_MILLIS)) {
+                    if (file.isDirectory()) {
+                        flatDirectory(file.getPath(), 0);
+                    }
+
+                    if (!file.delete()) {
+                        Timber.w("File not delete: %s/%s", file.getPath(), file.getName());
                     }
                 }
             }

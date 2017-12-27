@@ -95,7 +95,7 @@ public class Wood implements Tree {
     /**
      * Logging policy that should be applied in order to control
      */
-    private Process[] Processes = new Process[ALL];
+    private Process[] Processes = new Process[ALL + 1];
 
     /**
      * Called when tree is added into forest.
@@ -110,7 +110,11 @@ public class Wood implements Tree {
      */
     @Override
     public void uproot() {
-
+        for (Process process : Processes) {
+            if (process != null) {
+                process.destroy();
+            }
+        }
     }
 
     /**
@@ -392,8 +396,6 @@ public class Wood implements Tree {
     }
 
     private void clearStore(@NonNull String storedir) {
-
-        Tools.flatDirectory(storedir, Tools.MAX_HOURS_TO_KEEP);
         try {
             Tools.makeDirectory(storedir);
         } catch (IOException e) {
@@ -403,20 +405,25 @@ public class Wood implements Tree {
         }
     }
 
-    private String buildCliCommand(@NonNull String outfile, String level, String clsname) {
-        StringBuilder cb = new StringBuilder("logcat --pid=")
-                .append(Tools.getHostProcessId())
-                .append(" -v thread");
+    private String buildCliCommand(@NonNull String outfile, int tid, String level, String clsname) {
+        StringBuilder cb = new StringBuilder("logcat -v threadtime | grep \"")
+                .append(Tools.getHostProcessId());
+
+        if (tid != -1) {
+            cb.append(tid);
+        } else {
+            cb.append(".*");
+        }
 
         if (level != null) {
-            cb.append(" *:").append(level);
+            cb.append(level);
         }
 
         if (clsname != null) {
-            cb.append(" -e ").append(clsname);
+            cb.append(" ").append(clsname);
         }
 
-        cb.append(" -f ").append(outfile);
+        cb.append("\" | tee ").append(outfile);
 
         return cb.toString();
     }
@@ -426,12 +433,12 @@ public class Wood implements Tree {
         String memo_cli = "[No definition]";
         try {
             String paper = generatePaperName(storedir, "all");
-            memo_cli = buildCliCommand(paper, Spec.Level.name(), Spec.Class);
+            memo_cli = buildCliCommand(paper, -1, Spec.Level.name().toUpperCase(), null);
             Processes[ALL] = Runtime.getRuntime().exec(memo_cli);
 
             for (Level level : Spec.Filters) {
                 paper = generatePaperName(storedir, level.name());
-                memo_cli = buildCliCommand(paper, Spec.Level.name(), Spec.Class);
+                memo_cli = buildCliCommand(paper, -1, level.name().toUpperCase(), Spec.Class);
             }
         } catch (IOException e) {
             Timber.e(e, "Fail to run command: %s.", memo_cli);

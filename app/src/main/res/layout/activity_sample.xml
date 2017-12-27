@@ -15,7 +15,7 @@
         android:ems="10"
         android:inputType="textMultiLine|textPersonName"
         android:minLines="5"
-        android:text="The quick brown fox jumps over the lazy dog 1234567890 times. --=-=-=-=-=-=-=-=-=-=-=-=-= -=-=-=-=-=-=-=-=-= -=-=-=-= "
+        android:text='Test message: "woods.log.timber"'
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         tools:layout_editor_absoluteY="16dp" />
