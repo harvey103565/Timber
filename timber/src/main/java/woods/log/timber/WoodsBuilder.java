@@ -52,7 +52,7 @@ public class WoodsBuilder {
                 .map(new Function<Method, Tree>() {
                     @Override
                     public Tree apply(@NonNull Method method) throws Exception {
-                        return plantFromMethod(method);
+                        return treeFromMethod(method);
                     }
                 });
 
@@ -96,21 +96,21 @@ public class WoodsBuilder {
         methodObservable.connect();
     }
 
-    private Tree plantFromMethod(@NonNull Method method) {
-        Class<?> plantClass = method.getReturnType();
+    private Tree treeFromMethod(@NonNull Method method) {
+        Class<?> treeClass = method.getReturnType();
 
-        if (!Tree.class.isAssignableFrom(plantClass) || plantClass.isInterface() ||
-                Modifier.isAbstract(plantClass.getModifiers())) {
-            throw new AssertionError(plantClass.getName() + " type can not be instanced.", null);
+        if (!Tree.class.isAssignableFrom(treeClass) || treeClass.isInterface() ||
+                Modifier.isAbstract(treeClass.getModifiers())) {
+            throw new AssertionError(treeClass.getName() + " type can not be instanced.", null);
         }
 
         Tree tree;
         try {
-            tree = (Tree) plantClass.newInstance();
+            tree = (Tree) treeClass.newInstance();
         } catch (InstantiationException e) {
-            throw new AssertionError(plantClass.getName() + " missing default constructor?", e);
+            throw new AssertionError(treeClass.getName() + " missing default constructor?", e);
         } catch (IllegalAccessException e) {
-            throw new AssertionError("Could not load class: " + plantClass.getName(), e);
+            throw new AssertionError("Could not load class: " + treeClass.getName(), e);
         }
 
         return tree;
@@ -121,10 +121,8 @@ public class WoodsBuilder {
         if (annotations.length > 1) {
             throw new AssertionError("One annotation for each method.", null);
         }
-        Pin note = method.getAnnotation(Pin.class);
+        Pin pin = method.getAnnotation(Pin.class);
 
-        Spec spec = Tools.parseTipString(note.value());
-
-        return spec;
+        return Tools.parseTipString(pin.value());
     }
 }

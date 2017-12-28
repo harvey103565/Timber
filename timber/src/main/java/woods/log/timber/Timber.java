@@ -306,6 +306,7 @@ public class Timber {
         }
 
         milieu.bind(level, throwable, thread);
+        Milieus.set(milieu);
     }
 
     /**

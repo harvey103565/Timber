@@ -111,6 +111,9 @@ public class Wood implements Tree {
 
     private MemoThread MemoThread = null;
 
+    private Level miniLevel = Level.W;
+
+
     /**
      * Called when tree is added into forest.
      */
@@ -138,14 +141,20 @@ public class Wood implements Tree {
      */
     @Override
     public void pin(@NonNull Spec spec) {
-        if (spec.Level != null) {
-            applyLoggingLevel(spec.Level);
-        } else {
-            applyLoggingLevel(Level.W);
+        if (spec.Filters != null) {
+            for (Level filter : spec.Filters) {
+                Valves[filter.ordinal()] = true;
+
+                if(miniLevel.Priority() > filter.Priority()) {
+                    miniLevel = filter;
+                }
+            }
         }
 
-        if (spec.Filters != null) {
-            applyFilters(spec.Filters);
+        Level level = (spec.Level != null ? spec.Level : miniLevel);
+
+        for (int i = level.ordinal(), n = Valves.length; i < n; i++) {
+            Valves[i] = true;
         }
 
         Spec = spec;
@@ -341,23 +350,6 @@ public class Wood implements Tree {
         }
     }
 
-    private void applyFilters(Level[] filters) {
-        for (Level f : filters) {
-            Valves[f.ordinal()] = true;
-        }
-    }
-
-    private void applyLoggingLevel(Level l) {
-        int k = l.ordinal();
-
-        for (int i = 0; i < k; i++) {
-            Valves[i] = false;
-        }
-        for (int i = k, n = Valves.length; i < n; i++) {
-            Valves[i] = true;
-        }
-    }
-
     private void launchWorker() {
         Single.just(android.os.Process.myPid())
                 .observeOn(Schedulers.newThread())
@@ -417,17 +409,14 @@ public class Wood implements Tree {
     }
 
     private String buildCliCommand(int pid, @NonNull Level level) {
-        StringBuilder cb = new StringBuilder("logcat -v thread *:")
-                .append(level.name().toUpperCase())
-                .append(" | grep ' ")
-                .append(pid)
-                .append(" '");
+        StringBuilder cb = new StringBuilder("logcat -v threadtime *:")
+                .append(level.name().toUpperCase());
 
         return cb.toString();
     }
 
     private void startMemo(String storedir) {
-        String memo_cli = buildCliCommand(Tools.getHostProcessId(), Spec.Level);
+        String memo_cli = buildCliCommand(Tools.getHostProcessId(), miniLevel);
         MemoThread = new MemoThread(memo_cli, storedir);
         MemoThread.startThread();
     }
@@ -448,24 +437,18 @@ public class Wood implements Tree {
         BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream()), 1024);
 
-        reader.readLine();
         String line = reader.readLine();
 
-        if (line == null || line.isEmpty()) {
-            Timber.e("Can not invoke ps call, using pid instead.");
-            return ps;
-        }
-        Matcher matcher = pattern.matcher(line);
-        if (!matcher.find()) {
-            Timber.e("No package name found, using pid instead.");
-            return ps;
-        }
-        ps = matcher.group(1);
-        if (ps == null) {
-            throw new AssertionError("Could not find pkgname.");
+        while(line != null) {
+            Matcher matcher = pattern.matcher(line);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+
+            line = reader.readLine();
         }
 
-        return ps;
+        throw new AssertionError("Can not invoke ps call, using pid instead.");
     }
 
     private String generatePaperName(@NonNull String path, @NonNull String options) {
@@ -483,11 +466,9 @@ public class Wood implements Tree {
 
     private final class MemoThread extends Thread {
 
-        private boolean _Running = false;
+        private String cliString;
 
-        private String _Cli;
-
-        private String _StoreDir;
+        private String storeDir;
 
         /**
          * Logging process that should be applied in order to control
@@ -495,68 +476,54 @@ public class Wood implements Tree {
         private BufferedWriter[] Writers = new BufferedWriter[SUP];
 
 
-        MemoThread(String cli, String storedir) {
-            _Cli = cli;
-            _StoreDir = storedir;
+        MemoThread(String clistring, String storedir) {
+            cliString = clistring;
+            storeDir = storedir;
         }
 
         void startThread() {
-            boolean running;
-
-            synchronized (this) {
-                running = _Running;
-                _Running = true;
-            }
-
-            if (!running) {
-                start();
-            }
+            start();
         }
 
         void stopThread() {
-            boolean running;
-
-            synchronized (this) {
-                running = _Running;
-                _Running = false;
-            }
-
-            if (running) {
-                interrupt();
-            }
+            interrupt();
         }
 
         @Override
         public void run() {
 
-            Pattern pattern = Pattern.compile("\\b \\d+ \\d+ ([VDWIEA]) \\b");
+            Pattern pattern = Pattern.compile(String.format(
+                    "\\b\\s+%s\\s+\\d+\\s+([VDWIEA])\\s+\\b", Tools.getHostProcessId()));
             try {
                 createWriters();
 
-                Process process = Runtime.getRuntime().exec(_Cli);
+                Process process = Runtime.getRuntime().exec(cliString);
                 InputStream input = process.getInputStream();
                 BufferedReader mReader = new BufferedReader(new InputStreamReader(input), 4096);
 
                 try  {
-                    while (_Running) {
+                    while (!isInterrupted()) {
                         String line = mReader.readLine();
                         if (line == null) {
                             sleep(1000);
-                        } else {
-                            Matcher matcher = pattern.matcher(line);
-                            if (matcher != null) {
-                                Level level = Level.valueOf(matcher.group(1));
-                                int i = level.ordinal();
-                                if (Writers[i] != null) {
-                                    Writers[i].write(line);
-                                }
+                            continue;
+                        }
+
+                        Matcher matcher = pattern.matcher(line);
+                        if (matcher.find()) {
+                            Level level = Level.valueOf(matcher.group(1));
+                            int i = level.ordinal();
+                            if (Writers[i] != null) {
+                                Writers[i].write(line);
+                                Writers[i].write('\n');
                             }
                         }
+                        Writers[ALL].write(line);
+                        Writers[ALL].write('\n');
                     }
+                    releaseWriters();
+                    process.destroy();
                 } catch (InterruptedException e) {
-                    stopThread();
-                    Timber.w(e, "Dumper Thread thread quit.");
-                } finally {
                     releaseWriters();
                     process.destroy();
                 }
@@ -572,7 +539,7 @@ public class Wood implements Tree {
             filters.add(Level.ALL);
 
             for (Level level : filters) {
-                paper = generatePaperName(_StoreDir, level.name());
+                paper = generatePaperName(storeDir, level.name());
                 File file = new File(paper);
                 FileOutputStream fos = new FileOutputStream(file);
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos));
