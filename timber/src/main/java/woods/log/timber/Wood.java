@@ -494,64 +494,75 @@ public class Wood implements Tree {
 
             Pattern pattern = Pattern.compile(String.format(
                     "\\b\\s+%s\\s+\\d+\\s+([VDWIEA])\\s+\\b", Tools.getHostProcessId()));
-            try {
-                createWriters();
 
+            createWriters();
+
+            try {
                 Process process = Runtime.getRuntime().exec(cliString);
+
                 InputStream input = process.getInputStream();
                 BufferedReader mReader = new BufferedReader(new InputStreamReader(input), 4096);
 
-                try  {
-                    while (!isInterrupted()) {
-                        String line = mReader.readLine();
-                        if (line == null) {
-                            sleep(1000);
-                            continue;
+                while (!isInterrupted()) {
+                    String line = mReader.readLine();
+                    if (line == null) {
+                        try {
+                            sleep(600);
+                        } catch (InterruptedException e) {
+                            interrupt();
                         }
-
-                        Matcher matcher = pattern.matcher(line);
-                        if (matcher.find()) {
-                            Level level = Level.valueOf(matcher.group(1));
-                            int i = level.ordinal();
-                            if (Writers[i] != null) {
-                                Writers[i].write(line);
-                                Writers[i].write('\n');
-                            }
-                        }
-                        Writers[ALL].write(line);
-                        Writers[ALL].write('\n');
+                        continue;
                     }
-                    releaseWriters();
-                    process.destroy();
-                } catch (InterruptedException e) {
-                    releaseWriters();
-                    process.destroy();
+
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        Level level = Level.valueOf(matcher.group(1));
+                        int i = level.ordinal();
+                        if (Writers[i] != null) {
+                            Writers[i].write(line);
+                            Writers[i].write('\n');
+                        }
+                    }
+                    Writers[ALL].write(line);
+                    Writers[ALL].write('\n');
                 }
+
+                process.destroy();
             } catch (IOException e) {
-                Timber.w(e, "I/O Stream Error: %s");
+                Timber.w(e, "I/O Stream Error.");
+            } finally {
+                releaseWriters();
             }
         }
 
-        private void createWriters() throws FileNotFoundException {
+        private void createWriters() {
             String paper = "";
 
             ArrayList<Level> filters = new ArrayList<Level>(Arrays.asList(Spec.Filters));
             filters.add(Level.ALL);
 
             for (Level level : filters) {
-                paper = generatePaperName(storeDir, level.name());
-                File file = new File(paper);
-                FileOutputStream fos = new FileOutputStream(file);
-                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos));
-                Writers[level.ordinal()] = writer;
+                try {
+                    paper = generatePaperName(storeDir, level.name());
+                    File file = new File(paper);
+                    FileOutputStream fos = new FileOutputStream(file);
+                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos));
+                    Writers[level.ordinal()] = writer;
+                } catch (FileNotFoundException e) {
+                    Timber.e(e, "Fail opening file: %s", paper);
+                }
             }
         }
 
-        private void releaseWriters() throws IOException {
+        private void releaseWriters() {
             for (BufferedWriter writer : Writers) {
                 if (writer != null) {
-                    writer.flush();
-                    writer.close();
+                    try {
+                        writer.flush();
+                        writer.close();
+                    } catch (IOException e) {
+                        Timber.e(e, "Fail to close writer.");
+                    }
                 }
             }
         }
