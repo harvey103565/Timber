@@ -140,7 +140,7 @@ public class Timber {
         }
 
         @Override
-        public void w(@NonNull Throwable t, @NonNull String message, Object... args) {
+        public void w(@NonNull Throwable e, @NonNull String message, Object... args) {
             int n = forestAsArray.length;
             if (n > 0) {
                 Timber.probe(Level.W, null);
@@ -148,7 +148,7 @@ public class Timber {
                 Tree[] forest = forestAsArray;
                 //noinspection ForLoopReplaceableByForEach
                 for (int i = 0; i < n; i++) {
-                    forest[i].w(t, message, args);
+                    forest[i].w(e, message, args);
                 }
             }
         }
@@ -196,15 +196,15 @@ public class Timber {
         }
 
         @Override
-        public void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
+        public void wtf(@NonNull Throwable e, @NonNull String message, Object... args) {
             int n = forestAsArray.length;
             if (n > 0) {
-                Timber.probe(Level.A, t);
+                Timber.probe(Level.A, e);
 
                 Tree[] forest = forestAsArray;
                 //noinspection ForLoopReplaceableByForEach
                 for (int i = 0; i < n; i++) {
-                    forest[i].wtf(t, message, args);
+                    forest[i].wtf(e, message, args);
                 }
             }
         }
@@ -239,8 +239,8 @@ public class Timber {
     /**
      * Log pkgname verbose exception and pkgname message with optional format args.
      */
-    public static void v(@NonNull Throwable t, @NonNull String message, Object... args) {
-        astree().v(t, message, args);
+    public static void v(@NonNull Throwable e, @NonNull String message, Object... args) {
+        astree().v(e, message, args);
     }
 
     /**
@@ -253,8 +253,8 @@ public class Timber {
     /**
      * Log pkgname debug exception and pkgname message with optional format args.
      */
-    public static void d(@NonNull Throwable t, @NonNull String message, Object... args) {
-        astree().d(t, message, args);
+    public static void d(@NonNull Throwable e, @NonNull String message, Object... args) {
+        astree().d(e, message, args);
     }
 
     /**
@@ -267,8 +267,8 @@ public class Timber {
     /**
      * Log an info exception and pkgname message with optional format args.
      */
-    public static void i(@NonNull Throwable t, @NonNull String message, Object... args) {
-        astree().i(t, message, args);
+    public static void i(@NonNull Throwable e, @NonNull String message, Object... args) {
+        astree().i(e, message, args);
     }
 
     /**
@@ -281,8 +281,8 @@ public class Timber {
     /**
      * Log pkgname warning exception and pkgname message with optional format args.
      */
-    public static void w(@NonNull Throwable t, @NonNull String message, Object... args) {
-        astree().w(t, message, args);
+    public static void w(@NonNull Throwable e, @NonNull String message, Object... args) {
+        astree().w(e, message, args);
     }
 
     /**
@@ -295,26 +295,22 @@ public class Timber {
     /**
      * Log an error exception and pkgname message with optional format args.
      */
-    public static void e(@NonNull Throwable t, @NonNull String message, Object... args) {
-        astree().e(t, message, args);
+    public static void e(@NonNull Throwable e, @NonNull String message, Object... args) {
+        astree().e(e, message, args);
     }
 
     /**
      * Log an assert message with optional format args.
      */
     public static void wtf(@NonNull String message, Object... args) {
-        astree().wtf(message, args);
-
-        throw new AssertionError("Assertion abort.");
+        astree().wtf(new AssertionError("Assertion Hit."), message, args);
     }
 
     /**
      * Log an assert exception and pkgname message with optional format args.
      */
-    public static void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
-        astree().wtf(t, message, args);
-
-        throw new AssertionError("Assertion abort.", t);
+    public static void wtf(@NonNull Throwable e, @NonNull String message, Object... args) {
+        astree().wtf(e, message, args);
     }
 
     /**
@@ -328,9 +324,9 @@ public class Timber {
     /**
      * Probe the milieu for use on the next logging call.
      * @param level
-     * @param throwable
+     * @param e
      */
-    public static void probe(Level level, Throwable throwable) {
+    public static void probe(Level level, Throwable e) {
         final int CALL_STACK_INDEX = 5;
 
         Milieu milieu = new Milieu(Tools.getStackTrace(CALL_STACK_INDEX), Tags.get());
@@ -341,7 +337,7 @@ public class Timber {
             Timber.supervise();
         }
 
-        milieu.bind(level, throwable, thread);
+        milieu.bind(level, e, thread);
         Milieus.set(milieu);
     }
 
@@ -440,14 +436,20 @@ public class Timber {
             defaultHandler = handler;
         }
 
-        public void uncaughtException(Thread thread, Throwable t) {
-            if (t != null) {
-                Timber.e(t, t.getMessage());
+        public void uncaughtException(Thread thread, Throwable e) {
+            if (e != null) {
+                Timber.e(e, e.getMessage());
+
+                try {
+                    Thread.sleep(1200);
+                } catch (InterruptedException e1) {
+                    Timber.w("Timber messages may not been write to file.");
+                }
 
                 Timber.uprootall();
 
                 if (defaultHandler != null) {
-                    defaultHandler.uncaughtException(thread, t);
+                    defaultHandler.uncaughtException(thread, e);
                 }
             }
         }

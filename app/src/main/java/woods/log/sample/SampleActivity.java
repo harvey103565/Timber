@@ -84,7 +84,7 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
         String textMessage = editText.getText().toString();
 
         if (checkBoxEx.isChecked()) {
-            e = new IOException("This is pkgname test exception for Timber.");
+            e = new IOException("This is a test exception for Timber.");
         }
 
         if (e == null) {

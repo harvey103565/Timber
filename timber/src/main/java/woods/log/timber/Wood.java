@@ -86,7 +86,6 @@ public class Wood implements Tree {
     private final static int INFO = Level.I.Priority();
     private final static int ERROR = Level.E.Priority();
     private final static int WTF = Level.A.Priority();
-    private final static int SUP = Level.S.Priority();
 
     private final static int ALL = Level.ALL.ordinal();
     private final static int V = Level.V.ordinal();
@@ -95,6 +94,7 @@ public class Wood implements Tree {
     private final static int I = Level.I.ordinal();
     private final static int E = Level.E.ordinal();
     private final static int A = Level.A.ordinal();
+    private final static int S = Level.S.ordinal();
     /**
      * Logging policy that should be applied in order to control
      */
@@ -103,8 +103,7 @@ public class Wood implements Tree {
     /**
      * Logging policy that should be applied in order to control
      */
-    private boolean[] Valves = new boolean[SUP];
-
+    private boolean[] Valves = new boolean[S];
 
     private Disposable Disposable = null;
 
@@ -274,7 +273,7 @@ public class Wood implements Tree {
     @Override
     public void wtf(@NonNull String message, Object... args) {
         if (Valves[A]) {
-            log(WTF, null, message, args);
+            throw new AssertionError(format(message, args));
         }
     }
 
@@ -284,47 +283,47 @@ public class Wood implements Tree {
     @Override
     public void wtf(@NonNull Throwable t, @NonNull String message, Object... args) {
         if (Valves[A]) {
-            log(WTF, t, message, args);
+            throw new AssertionError(format(message, args), t);
         }
     }
 
-    /**
-     * Get tag ready and Convert message & args to log string.
-     */
-    private void log(int priority, Throwable t, @NonNull String message, Object... args) {
+    private String format(String message, Object... args) {
         if (args.length > 0) {
             try {
                 message = String.format(message, args);
             } catch (IllegalFormatException e) {
-                message = message + "(Args aren't formative.)" ;
+                message = message + "(Args are not formative.)" ;
             }
         }
 
-        Milieu milieu = Timber.get();
-
-        log(priority, milieu.what, message, t);
+        return message;
     }
 
     /**
-     * The function that performs actual logging action.
+     * Get tag ready and Convert message & args to log string.
      *
      * @param priority The priority/type of this log message
-     * @param tag      Used to identify the source of pkgname log message.  It usually identifies
-     *                 the class or activity where the log call occurs.
-     * @param message  The message you would like logged.
      * @param t        An exception to log.
+     * @param message  The message you would like logged.
+     * @param args     Arguments used to format the message string.
      */
-    public void log(int priority, String tag, String message, Throwable t) {
-        StringBuilder ms = new StringBuilder(message);
+    private void log(int priority, Throwable t, @NonNull String message, Object... args) {
+
+        String text = format(message, args);
+
+        Milieu m = Timber.get();
+
         if (t != null) {
+            StringBuilder tb = new StringBuilder(text);
             String stacktrace = Tools.serializeException(t);
-            ms.append("\n").append(stacktrace);
+            tb.append("\n").append(stacktrace);
+            text = tb.toString();
         }
 
-        if (ms.length() < MAX_LOG_LENGTH) {
-            Log.println(priority == WTF ? ERROR : priority, tag, ms.toString());
+        if (text.length() < MAX_LOG_LENGTH) {
+            Log.println(priority, m.what, text);
         } else {
-            println(priority, tag, ms.toString());
+            println(priority, m.what, text);
         }
     }
 
@@ -343,7 +342,7 @@ public class Wood implements Tree {
                 int end = Math.min(newline, i + MAX_LOG_LENGTH);
                 String part = message.substring(i, end);
 
-                Log.println(priority == WTF ? ERROR : priority, tag, part);
+                Log.println(priority, tag, part);
                 i = end;
             } while (i < newline);
         }
@@ -374,11 +373,13 @@ public class Wood implements Tree {
                     public void onSuccess(String storedir) {
                         makeStore(storedir);
                         startMemo(storedir);
+
+                        Disposable = null;
                     }
 
                     @Override
                     public void onError(Throwable e) {
-
+                        Disposable = null;
                     }
                 });
     }
@@ -469,12 +470,15 @@ public class Wood implements Tree {
 
         private String StoreDirectory;
 
-        private Process LogcatProcess = null;
-
         /**
          * Logging LogcatProcess that should be applied in order to control
          */
-        private BufferedWriter[] Writers = new BufferedWriter[SUP];
+        private Process LogcatProcess = null;
+
+        /**
+         * Nothing to write with logging level WTF
+         */
+        private BufferedWriter[] Writers = new BufferedWriter[A];
 
 
         MemoThread(String clistring, String storedir) {
@@ -563,6 +567,13 @@ public class Wood implements Tree {
             filters.add(Level.ALL);
 
             for (Level level : filters) {
+                /**
+                 * Nothing to write with logging level WTF
+                 */
+                if (level.Priority() >= WTF) {
+                    continue;
+                }
+
                 try {
                     paper = generatePaperName(StoreDirectory, level.name());
                     File file = new File(paper);
