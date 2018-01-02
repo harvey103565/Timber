@@ -40,7 +40,7 @@ import io.reactivex.schedulers.Schedulers;
  * -r [<kbytes>]   Rotate log every kbytes. (16 if unspecified). Requires -f
  * -n <count>      Sets max number of rotated logs to <count>, default 4
  * -v <format>     Sets the log print format, where <format> is one of:
- * [brief, process, tag, thread, raw, time, threadtime, long]
+ * [brief, LogcatProcess, tag, thread, raw, time, threadtime, long]
  * -c              clear (flush) the entire log and exit
  * -d              dump the log and then exit (don't block)
  * -t <count>      print only the most recent <count> lines (implies -d)
@@ -107,7 +107,6 @@ public class Wood implements Tree {
 
 
     private Disposable Disposable = null;
-
 
     private MemoThread MemoThread = null;
 
@@ -466,27 +465,38 @@ public class Wood implements Tree {
 
     private final class MemoThread extends Thread {
 
-        private String cliString;
+        private String CommandString;
 
-        private String storeDir;
+        private String StoreDirectory;
+
+        private Process LogcatProcess = null;
 
         /**
-         * Logging process that should be applied in order to control
+         * Logging LogcatProcess that should be applied in order to control
          */
         private BufferedWriter[] Writers = new BufferedWriter[SUP];
 
 
         MemoThread(String clistring, String storedir) {
-            cliString = clistring;
-            storeDir = storedir;
+            CommandString = clistring;
+            StoreDirectory = storedir;
         }
 
         void startThread() {
             start();
+            try {
+                LogcatProcess = Runtime.getRuntime().exec(CommandString);
+            } catch (IOException e) {
+                Timber.e(e, "Run cli failed: %s", CommandString);
+            }
         }
 
         void stopThread() {
             interrupt();
+            if (LogcatProcess != null) {
+                LogcatProcess.destroy();
+            }
+            LogcatProcess = null;
         }
 
         @Override
@@ -498,15 +508,17 @@ public class Wood implements Tree {
             createWriters();
 
             try {
-                Process process = Runtime.getRuntime().exec(cliString);
-
-                InputStream input = process.getInputStream();
+                InputStream input = LogcatProcess.getInputStream();
                 BufferedReader mReader = new BufferedReader(new InputStreamReader(input), 4096);
 
                 while (!isInterrupted()) {
                     String line = mReader.readLine();
                     if (line == null) {
                         try {
+                            /**
+                             * Sleep is the corner case, the memo thread should be always waiting
+                             * process output stream in normal case.
+                             */
                             sleep(600);
                         } catch (InterruptedException e) {
                             interrupt();
@@ -517,21 +529,30 @@ public class Wood implements Tree {
                     Matcher matcher = pattern.matcher(line);
                     if (matcher.find()) {
                         Level level = Level.valueOf(matcher.group(1));
-                        int i = level.ordinal();
-                        if (Writers[i] != null) {
-                            Writers[i].write(line);
-                            Writers[i].write('\n');
-                        }
+                        writeLogs(line, level.ordinal());
                     }
-                    Writers[ALL].write(line);
-                    Writers[ALL].write('\n');
+                    writeLogs(line, ALL);
                 }
-
-                process.destroy();
             } catch (IOException e) {
-                Timber.w(e, "I/O Stream Error.");
+                /**
+                 * Error reading in the logcat process' output stream, this is usually caused by
+                 * process being destroyed. Here just discard the exception and close file output.
+                 * CAN'T do any log since the tree have been uprooted.
+                 */
+                Timber.w(e, "Process I/O stream closed.");
             } finally {
                 releaseWriters();
+            }
+        }
+
+        private void writeLogs(String line, int i) {
+            try {
+                if (i < Writers.length && Writers[i] != null) {
+                    Writers[i].write(line);
+                    Writers[i].write('\n');
+                }
+            } catch (IOException e) {
+                Timber.e(e, "I/O Stream Error. <Writer #%d>", i);
             }
         }
 
@@ -543,7 +564,7 @@ public class Wood implements Tree {
 
             for (Level level : filters) {
                 try {
-                    paper = generatePaperName(storeDir, level.name());
+                    paper = generatePaperName(StoreDirectory, level.name());
                     File file = new File(paper);
                     FileOutputStream fos = new FileOutputStream(file);
                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos));
