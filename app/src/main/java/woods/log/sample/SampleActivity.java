@@ -16,6 +16,8 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import woods.log.timber.Timber;
+import woods.log.timber.Tree;
+import woods.log.timber.Wood;
 
 public class SampleActivity extends Activity implements ActivityCompat.OnRequestPermissionsResultCallback {
 
@@ -66,8 +68,10 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
                 // result of the request.
             }
         } else {
+            Tree tree = new Wood();
             Timber.builder()
-                    .addTreeFactory(Seed.class)
+                    .addSeeds(Seed.class)
+                    .addTrees(tree)
                     .build();
         }
     }
@@ -136,7 +140,7 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
                                     @NonNull int[] grantResults) {
 
         Timber.builder()
-                .addTreeFactory(Seed.class)
+                .addSeeds(Seed.class)
                 .build();
 
         Timber.supervise();

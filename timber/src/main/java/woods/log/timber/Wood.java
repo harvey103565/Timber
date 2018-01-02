@@ -111,6 +111,7 @@ public class Wood implements Tree {
 
     private Level miniLevel = Level.W;
 
+    private volatile String threadId = null;
 
     /**
      * Called when tree is added into forest.
@@ -311,13 +312,27 @@ public class Wood implements Tree {
 
         String text = format(message, args);
 
-        Milieu m = Timber.get();
-
         if (t != null) {
             StringBuilder tb = new StringBuilder(text);
             String stacktrace = Tools.serializeException(t);
             tb.append("\n").append(stacktrace);
             text = tb.toString();
+        }
+
+        Milieu m = Timber.get();
+        if (m == null) {
+            Timber.e("Internal failure, could not get Milieu.");
+            return;
+        }
+
+        if (threadId == null && m.thread != null) {
+            if (Spec != null && Spec.Thread != null) {
+                Pattern pattern = Pattern.compile(Spec.Thread);
+                Matcher matcher = pattern.matcher(Tools.getCurrentThreadName());
+                if (matcher.find()) {
+                    threadId = String.valueOf(Tools.getCurrentThreadId());
+                }
+            }
         }
 
         if (text.length() < MAX_LOG_LENGTH) {
@@ -416,9 +431,13 @@ public class Wood implements Tree {
     }
 
     private void startMemo(String storedir) {
-        String memo_cli = buildCliCommand(Tools.getHostProcessId(), miniLevel);
-        MemoThread = new MemoThread(memo_cli, storedir);
-        MemoThread.startThread();
+        if (Spec != null) {
+            if (Spec.Filters != null || Spec.Thread != null || Spec.Class != null || Spec.Method != null) {
+                String memo_cli = buildCliCommand(Tools.getHostProcessId(), miniLevel);
+                MemoThread = new MemoThread(memo_cli, storedir);
+                MemoThread.startThread();
+            }
+        }
     }
 
     private void stopMemo() {
@@ -487,9 +506,10 @@ public class Wood implements Tree {
         }
 
         void startThread() {
-            start();
             try {
                 LogcatProcess = Runtime.getRuntime().exec(CommandString);
+
+                start();
             } catch (IOException e) {
                 Timber.e(e, "Run cli failed: %s", CommandString);
             }
@@ -507,7 +527,7 @@ public class Wood implements Tree {
         public void run() {
 
             Pattern pattern = Pattern.compile(String.format(
-                    "\\b\\s+%s\\s+\\d+\\s+([VDWIEA])\\s+\\b", Tools.getHostProcessId()));
+                    "\\b\\s+%s\\s+(\\d+)\\s+([VDWIEA])\\s+\\b(.+)", Tools.getHostProcessId()));
 
             createWriters();
 
@@ -519,7 +539,7 @@ public class Wood implements Tree {
                     String line = mReader.readLine();
                     if (line == null) {
                         try {
-                            /**
+                            /*
                              * Sleep is the corner case, the memo thread should be always waiting
                              * process output stream in normal case.
                              */
@@ -532,21 +552,37 @@ public class Wood implements Tree {
 
                     Matcher matcher = pattern.matcher(line);
                     if (matcher.find()) {
-                        Level level = Level.valueOf(matcher.group(1));
-                        writeLogs(line, level.ordinal());
+                        if (matchline(matcher)){
+                            Level level = Level.valueOf(matcher.group(2));
+                            writeLogs(line, level.ordinal());
+                        }
                     }
                     writeLogs(line, ALL);
                 }
             } catch (IOException e) {
-                /**
+                /*
                  * Error reading in the logcat process' output stream, this is usually caused by
                  * process being destroyed. Here just discard the exception and close file output.
                  * CAN'T do any log since the tree have been uprooted.
                  */
-                Timber.w(e, "Process I/O stream closed.");
             } finally {
                 releaseWriters();
             }
+        }
+
+        private boolean matchline(Matcher matcher) {
+
+            String tid = matcher.group(1);
+            if (threadId != null && !threadId.equals(tid)) {
+                return false;
+            }
+
+            String tag = matcher.group(3);
+            if (Spec != null && Spec.Class != null && !Spec.Class.equals(tag)) {
+                return false;
+            }
+
+            return true;
         }
 
         private void writeLogs(String line, int i) {
@@ -563,11 +599,15 @@ public class Wood implements Tree {
         private void createWriters() {
             String paper = "";
 
-            ArrayList<Level> filters = new ArrayList<Level>(Arrays.asList(Spec.Filters));
+            ArrayList<Level> filters = new ArrayList<>();
+            if (Spec != null && Spec.Filters != null) {
+                filters.addAll(Arrays.asList(Spec.Filters));
+            }
+
             filters.add(Level.ALL);
 
             for (Level level : filters) {
-                /**
+                /*
                  * Nothing to write with logging level WTF
                  */
                 if (level.Priority() >= WTF) {

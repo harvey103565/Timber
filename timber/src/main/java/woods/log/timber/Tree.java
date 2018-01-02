@@ -7,7 +7,7 @@ import android.support.annotation.NonNull;
  * Tree: pkgname kind plant that is able to produce log
  */
 
-interface Tree {
+public interface Tree {
 
     /**
      * Called when tree is added into forest.

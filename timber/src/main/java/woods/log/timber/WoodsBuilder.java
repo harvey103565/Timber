@@ -23,23 +23,30 @@ import io.reactivex.observables.ConnectableObservable;
 
 public class WoodsBuilder {
 
-    private ArrayList<Class<?>> Factories = new ArrayList<Class<?>>();
+    private ArrayList<Class<?>> Seeds = new ArrayList<Class<?>>();
+    private ArrayList<Tree> Trees = new ArrayList<Tree>();
+
 
     public WoodsBuilder() {
     }
 
-    public WoodsBuilder addTreeFactory(@NonNull Class<?>... factories) {
-        Collections.addAll(Factories, factories);
+    public WoodsBuilder addSeeds(@NonNull Class<?>... seeds) {
+        Collections.addAll(Seeds, seeds);
+        return this;
+    }
+
+    public WoodsBuilder addTrees(@NonNull Tree... trees) {
+        Collections.addAll(Trees, trees);
         return this;
     }
 
     public void build() {
-        if (Factories.isEmpty()) {
+        if (Seeds.isEmpty()) {
             return;
         }
 
         ConnectableObservable<Method> methodObservable =
-                Observable.fromArray(Factories.toArray(new Class<?>[Factories.size()]))
+                Observable.fromArray(Seeds.toArray(new Class<?>[Seeds.size()]))
                 .flatMap(new Function<Class<?>, ObservableSource<Method>>() {
                     @Override
                     public ObservableSource<Method> apply(@NonNull Class<?> aClass) throws Exception {
@@ -89,6 +96,9 @@ public class WoodsBuilder {
 
                     @Override
                     public void onComplete() {
+                        for (Tree tree : Trees) {
+                            Timber.plant(tree);
+                        }
                         Timber.i("Timber build complete.");
                     }
                 });
