@@ -21,12 +21,12 @@ public class Milieu {
     public String who;
 
     /**
-     * Caller method<File Line: #>
+     * Call at <File Line: #>
      */
     public String where;
 
     /**
-     * Tag, what kind of logging
+     * Tag, what kind of logging, or who<method>
      */
     public String what;
 
@@ -59,12 +59,15 @@ public class Milieu {
     public Milieu(@NonNull StackTraceElement trace, String tag) {
         when = dateFormat.format(System.currentTimeMillis());
 
-        where = String.format(Locale.US,"%s<%s line: %d>", trace.getMethodName(),
-                trace.getFileName(), trace.getLineNumber());
+        where = String.format("<%s line: %s>", trace.getFileName(),
+                String.valueOf(trace.getLineNumber()));
 
         who = Tools.getClassNameFromStack(trace);
 
-        what = (tag == null ? who : tag);
+        if (tag == null)
+            what = String.format("%s<%s>", who, Tools.getMethodNameFromStack(trace));
+        else
+            what = tag;
 
         pkgname = Tools.getPackageNameFromStack(trace);
 

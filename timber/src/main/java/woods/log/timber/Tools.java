@@ -236,7 +236,7 @@ public class Tools {
      * becomes {@code Foo}).
      * <p>
      */
-    public static String getClassNameFromStack(StackTraceElement element) {
+    public static String getClassNameFromStack(@NonNull StackTraceElement element) {
         String cls = element.getClassName();
         Matcher m = ANONYMOUS_CLASS.matcher(cls);
         if (m.find()) {
@@ -252,12 +252,12 @@ public class Tools {
      * becomes {@code Foo}).
      * <p>
      */
-    public static String getPackageNameFromStack(StackTraceElement element) {
+    public static String getPackageNameFromStack(@NonNull StackTraceElement element) {
         String fullname = element.getClassName();
         String file = element.getFileName();
         String cls = file.substring(0, file.indexOf('.'));
 
-        String pkname = String.format("\\b([pkgname-z][pkgname-z0-9_]*(?:\\.[pkgname-z0-9_]+)+)(?=\\.%s.*)\\b",
+        String pkname = String.format("\\b([a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+)(?=\\.%s.*)\\b",
                 cls);
         Matcher m = Pattern.compile(pkname).matcher(fullname);
         if (m.find()) {
@@ -265,6 +265,10 @@ public class Tools {
         }
 
         return null;
+    }
+
+    public static String getMethodNameFromStack(@NonNull StackTraceElement element) {
+        return element.getMethodName();
     }
 
     public static StackTraceElement getStackTrace(int pos) {

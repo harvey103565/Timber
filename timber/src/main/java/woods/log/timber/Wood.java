@@ -40,7 +40,7 @@ import io.reactivex.schedulers.Schedulers;
  * -r [<kbytes>]   Rotate log every kbytes. (16 if unspecified). Requires -f
  * -n <count>      Sets max number of rotated logs to <count>, default 4
  * -v <format>     Sets the log print format, where <format> is one of:
- * [brief, LogcatProcess, tag, thread, raw, time, threadtime, long]
+ * [brief, Proc, tag, thread, raw, time, threadtime, long]
  * -c              clear (flush) the entire log and exit
  * -d              dump the log and then exit (don't block)
  * -t <count>      print only the most recent <count> lines (implies -d)
@@ -76,7 +76,7 @@ import io.reactivex.schedulers.Schedulers;
  */
 public class Wood implements Tree {
 
-    private final static String ACCURATETIME = "MM-dd_HH-mm-ss-SSS";
+//    private final static String ACCURATETIME = "MM-dd_HH-mm-ss-SSS";
     private final static String BRIEFTIME = "MM-dd_HH-mm";
     private final static int MAX_LOG_LENGTH = 2048;
 
@@ -98,7 +98,7 @@ public class Wood implements Tree {
     /**
      * Logging policy that should be applied in order to control
      */
-    private Spec Spec = null;
+    private Spec MemoSpec = null;
 
     /**
      * Logging policy that should be applied in order to control
@@ -156,7 +156,7 @@ public class Wood implements Tree {
             Valves[i] = true;
         }
 
-        Spec = spec;
+        MemoSpec = spec;
     }
 
     /**
@@ -325,13 +325,13 @@ public class Wood implements Tree {
             return;
         }
 
-        if (threadId == null && m.thread != null) {
-            if (Spec != null && Spec.Thread != null) {
-                Pattern pattern = Pattern.compile(Spec.Thread);
-                Matcher matcher = pattern.matcher(Tools.getCurrentThreadName());
-                if (matcher.find()) {
-                    threadId = String.valueOf(Tools.getCurrentThreadId());
-                }
+        if (threadId == null && m.thread != null && MemoSpec != null && MemoSpec.Thread != null) {
+            // Don't have target thread id and a new thread is detected and it is required to match thread name
+            Pattern pattern = Pattern.compile(MemoSpec.Thread);
+            Matcher matcher = pattern.matcher(Tools.getCurrentThreadName());
+            if (matcher.find()) {
+                threadId = String.valueOf(Tools.getCurrentThreadId());
+                startMemo(null);
             }
         }
 
@@ -386,8 +386,9 @@ public class Wood implements Tree {
 
                     @Override
                     public void onSuccess(String storedir) {
-                        makeStore(storedir);
-                        startMemo(storedir);
+                        if (makeStore(storedir)) {
+                            startMemo(storedir);
+                        }
 
                         Disposable = null;
                     }
@@ -413,31 +414,32 @@ public class Wood implements Tree {
         return pathbuilder.append(File.separator).append(store).toString();
     }
 
-    private void makeStore(@NonNull String storedir) {
+    private boolean makeStore(@NonNull String storedir) {
         try {
             Tools.makeDirectory(storedir);
         } catch (IOException e) {
-            // TODO: Can not start work
-
             Timber.e(e, "Failed when creating log directory. Abort dumping.");
+            return false;
         }
-    }
 
-    private String buildCliCommand(int pid, @NonNull Level level) {
-        StringBuilder cb = new StringBuilder("logcat -v threadtime *:")
-                .append(level.name().toUpperCase());
-
-        return cb.toString();
+        return true;
     }
 
     private void startMemo(String storedir) {
-        if (Spec != null) {
-            if (Spec.Filters != null || Spec.Thread != null || Spec.Class != null || Spec.Method != null) {
-                String memo_cli = buildCliCommand(Tools.getHostProcessId(), miniLevel);
-                MemoThread = new MemoThread(memo_cli, storedir);
-                MemoThread.startThread();
-            }
+        if (MemoThread == null) {
+            if (storedir == null)
+                return;
+            else
+                MemoThread = new MemoThread(storedir);
         }
+
+        if (MemoSpec != null && MemoSpec.Thread != null && threadId == null) {
+            // Thread matching is required, however thread id is not known now.
+            return;
+        }
+
+        // No matter MemoSpec or MemoSpec.Thread is null, in both case threadId is null
+        MemoThread.startThread(miniLevel, threadId, MemoSpec);
     }
 
     private void stopMemo() {
@@ -485,14 +487,16 @@ public class Wood implements Tree {
 
     private final class MemoThread extends Thread {
 
-        private String CommandString;
+        private int ProcId;
 
-        private String StoreDirectory;
+        private Spec MemoSpec;
+
+        private String Store;
 
         /**
-         * Logging LogcatProcess that should be applied in order to control
+         * Logging Proc that should be applied in order to control
          */
-        private Process LogcatProcess = null;
+        private Process Proc = null;
 
         /**
          * Nothing to write with logging level WTF
@@ -500,39 +504,61 @@ public class Wood implements Tree {
         private BufferedWriter[] Writers = new BufferedWriter[A];
 
 
-        MemoThread(String clistring, String storedir) {
-            CommandString = clistring;
-            StoreDirectory = storedir;
+        MemoThread(@NonNull String storedir) {
+            Store = storedir;
+
+            ProcId = Tools.getHostProcessId();
         }
 
-        void startThread() {
-            try {
-                LogcatProcess = Runtime.getRuntime().exec(CommandString);
+        void startThread(@NonNull Level level, String thread, Spec spec) {
+            if (spec == null || MemoSpec != null)
+                return;
 
+            MemoSpec = new Spec();
+
+            MemoSpec.Level = level;
+
+            if (thread != null)
+                MemoSpec.Thread = thread;
+            else
+                MemoSpec.Thread = "\\d+";
+
+            if (spec.Class != null)
+                MemoSpec.Class = "\\w*" + spec.Class + "\\w*";
+            else
+                MemoSpec.Class = "\\w+";
+
+            if (spec.Method != null)
+                MemoSpec.Method = "<\\w*" + spec.Method + "\\w*>";
+            else
+                MemoSpec.Method = "(?:<\\w+>)?";
+
+            String cli = buildCliCommand(MemoSpec.Level);
+            try {
+                Proc = Runtime.getRuntime().exec(cli);
                 start();
             } catch (IOException e) {
-                Timber.e(e, "Run cli failed: %s", CommandString);
+                Timber.e(e, "Run cli failed: %s", cli);
             }
         }
 
         void stopThread() {
             interrupt();
-            if (LogcatProcess != null) {
-                LogcatProcess.destroy();
+            if (Proc != null) {
+                Proc.destroy();
             }
-            LogcatProcess = null;
+            Proc = null;
         }
 
         @Override
         public void run() {
 
-            Pattern pattern = Pattern.compile(String.format(
-                    "\\b\\s+%s\\s+(\\d+)\\s+([VDWIEA])\\s+\\b(.+)", Tools.getHostProcessId()));
+            Pattern pattern = buildPattern(ProcId, MemoSpec.Thread, MemoSpec.Class, MemoSpec.Method);
 
             createWriters();
 
             try {
-                InputStream input = LogcatProcess.getInputStream();
+                InputStream input = Proc.getInputStream();
                 BufferedReader mReader = new BufferedReader(new InputStreamReader(input), 4096);
 
                 while (!isInterrupted()) {
@@ -552,10 +578,8 @@ public class Wood implements Tree {
 
                     Matcher matcher = pattern.matcher(line);
                     if (matcher.find()) {
-                        if (matchline(matcher)){
-                            Level level = Level.valueOf(matcher.group(2));
-                            writeLogs(line, level.ordinal());
-                        }
+                        Level level = Level.valueOf(matcher.group(1));
+                        writeLogs(line, level.ordinal());
                     }
                     writeLogs(line, ALL);
                 }
@@ -570,19 +594,15 @@ public class Wood implements Tree {
             }
         }
 
-        private boolean matchline(Matcher matcher) {
 
-            String tid = matcher.group(1);
-            if (threadId != null && !threadId.equals(tid)) {
-                return false;
-            }
+        private String buildCliCommand(@NonNull Level level) {
+            return "logcat -v threadtime *:" + level.name().toUpperCase();
+        }
 
-            String tag = matcher.group(3);
-            if (Spec != null && Spec.Class != null && !Spec.Class.equals(tag)) {
-                return false;
-            }
-
-            return true;
+        private Pattern buildPattern(int pid, String tid, String classtr, String methodstr) {
+            String patter_template = "\\b\\s+%d\\s+%s\\s+([VDWIEA])\\s+\\b%s%s";
+            return Pattern.compile(
+                    String.format(Locale.US, patter_template, pid, tid, classtr, methodstr));
         }
 
         private void writeLogs(String line, int i) {
@@ -600,8 +620,8 @@ public class Wood implements Tree {
             String paper = "";
 
             ArrayList<Level> filters = new ArrayList<>();
-            if (Spec != null && Spec.Filters != null) {
-                filters.addAll(Arrays.asList(Spec.Filters));
+            if (Wood.this.MemoSpec != null && Wood.this.MemoSpec.Filters != null) {
+                filters.addAll(Arrays.asList(Wood.this.MemoSpec.Filters));
             }
 
             filters.add(Level.ALL);
@@ -615,7 +635,7 @@ public class Wood implements Tree {
                 }
 
                 try {
-                    paper = generatePaperName(StoreDirectory, level.name());
+                    paper = generatePaperName(Store, level.name());
                     File file = new File(paper);
                     FileOutputStream fos = new FileOutputStream(file);
                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(fos));
