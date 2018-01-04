@@ -51,32 +51,46 @@ public class Milieu {
     public String thread;
 
     /**
+     * Caller thread
+     */
+    public String pack;
+
+    /**
      * Caller package
      */
-    public String pkgname;
+    public String source;
 
 
-    public Milieu(@NonNull StackTraceElement trace, String tag) {
+    public Milieu(String tag) {
+        final int STACK_INDEX = 4;
+
+        StackTraceElement trace;
+        StackTraceElement[] stack = new Throwable().getStackTrace();
+        if (stack.length > STACK_INDEX) {
+            trace = stack[STACK_INDEX];
+        } else {
+            Timber.wtf("Synthetic stacktrace didn't have enough elements: are you using proguard?");
+            trace = stack[stack.length - 1];
+        }
+
         when = dateFormat.format(System.currentTimeMillis());
 
-        where = String.format("<%s line: %s>", trace.getFileName(),
-                String.valueOf(trace.getLineNumber()));
+        where = Tools.getMethodNameFromStack(trace);
 
         who = Tools.getClassNameFromStack(trace);
 
-        if (tag == null)
-            what = String.format("%s<%s>", who, Tools.getMethodNameFromStack(trace));
-        else
-            what = tag;
+        what = tag;
 
-        pkgname = Tools.getPackageNameFromStack(trace);
+        thread = Tools.getCurrentThreadName();
 
-        thread = Thread.currentThread().getName();
+        pack = Tools.getPackageNameFromStack(trace);
+
+        source = String.format("<%s:%s>", trace.getFileName(),
+                String.valueOf(trace.getLineNumber()));
     }
 
-    public void bind(@NonNull Level level, Throwable thr, String trd) {
-        how = level;
-        why = thr;
-        thread = trd;
+    public void bind(@NonNull Level l, Throwable e) {
+        how = l;
+        why = e;
     }
 }

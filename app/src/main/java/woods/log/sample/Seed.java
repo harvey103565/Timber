@@ -7,6 +7,6 @@ import woods.log.timber.Wood;
  * Interface to generate trees used in woods
  */
 public interface Seed {
-    @Pin("{\"Class\":\"SampleActivity\", \"Level\":\"W\", \"Thread\":\"main\", \"Filters\":[\"I\",\"E\",\"A\"]}")
+    @Pin("{\"Class\":\"SampleActivity\", \"Method\":\"testWoods\", \"Level\":\"W\", \"Thread\":\"NEW#1-\", \"Filters\":[\"I\",\"E\",\"A\"]}")
     Wood debugTree();
 }

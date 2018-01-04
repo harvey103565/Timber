@@ -25,10 +25,10 @@ public class Tools {
 
     // Milliseconds in one hour
     public static final long ONE_HOUR_MILLIS = 60 * 60 * 1000;
-    // Default maximum hours pkgname file could be kept when reusing directory
+    // Default maximum hours file could be kept when reusing directory
     public static final int MAX_HOURS_TO_KEEP = 8;
 
-    private static final int MAX_TAG_LENGTH = 30;
+    private static final int MAX_TAG_LENGTH = 32;
 
     private static final Pattern ANONYMOUS_CLASS = Pattern.compile("(\\$\\d+)+$");
 
@@ -75,7 +75,7 @@ public class Tools {
     }
 
     /**
-     * Collect Package's information for debugging purpose. Especially when there's pkgname crash.
+     * Collect Package's information for debugging purpose. Especially when there's crash.
      *
      * @param c {@link Context} from app
      * @return Map object contains package information in key-pair format
@@ -157,7 +157,7 @@ public class Tools {
     }
 
     /**
-     * Create pkgname directory to store the log files
+     * Create directory to store the log files
      *
      * @param name the directory to save logs
      * @return true if directory create successfully
@@ -177,7 +177,7 @@ public class Tools {
     }
 
     /**
-     * Create pkgname directory to store the log files
+     * Create directory to store the log files
      *
      * @param path the directory to save logs
      * @return true if directory create successfully
@@ -191,7 +191,6 @@ public class Tools {
             }
         } else if (directory.isDirectory()) {
             flatDirectory(path, MAX_HOURS_TO_KEEP);
-            Timber.w("Using existing log directory: %s.", path);
         } else {
             throw new IOException("Directory already exist.");
         }
@@ -269,17 +268,6 @@ public class Tools {
 
     public static String getMethodNameFromStack(@NonNull StackTraceElement element) {
         return element.getMethodName();
-    }
-
-    public static StackTraceElement getStackTrace(int pos) {
-
-        // DO NOT switch this to Thread.getCurrentThread().getStackTrace(). The test will pass
-        // because Robolectric runs them on the JVM but on Android the elements are different.
-        StackTraceElement[] stackTrace = new Throwable().getStackTrace();
-        if (stackTrace.length <= pos) {
-            Timber.wtf("Synthetic stacktrace didn't have enough elements: are you using proguard?");
-        }
-        return stackTrace[pos < stackTrace.length ? pos : stackTrace.length - 1];
     }
 
     public static Spec parseTipString(String json) {

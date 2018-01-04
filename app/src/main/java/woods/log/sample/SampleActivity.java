@@ -84,6 +84,30 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
 
     @OnClick(R.id.button)
     public void onViewClicked() {
+        Thread thread = new Thread() {
+
+            @Override
+            public void run() {
+                testWoodsInThread();
+            }
+        };
+
+        thread.setName("NEW#1-Woods");
+
+        thread.start();
+    }
+
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                    @NonNull int[] grantResults) {
+
+        Timber.builder()
+                .addSeeds(Seed.class)
+                .build();
+
+        Timber.supervise();
+    }
+
+    private void testWoodsInThread() {
         Exception e = null;
         String textMessage = editText.getText().toString();
 
@@ -135,15 +159,4 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
             throw new IllegalArgumentException("Trigger runtime exception test.");
         }
     }
-
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                    @NonNull int[] grantResults) {
-
-        Timber.builder()
-                .addSeeds(Seed.class)
-                .build();
-
-        Timber.supervise();
-    }
-
 }

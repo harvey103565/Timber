@@ -8,7 +8,7 @@ import java.util.List;
 
 
 /**
- * This code is pkgname modified copy from JakeWharton's timber project
+ * This code is modified copy from JakeWharton's timber project
  * You can find the original code at Github. Url: "https://github.com/JakeWharton/timber"
  * Changes:
  * - Remove class DebugLog
@@ -35,11 +35,6 @@ public class Timber {
      * A {@link Tree} that delegates to all planted trees in the {@linkplain #Forest forest}.
      */
     private static final Tree TREE_OF_SOULS = new Tree() {
-
-        @Override
-        public Tree asTree() {
-            return this;
-        }
 
         @Override
         public void v(@NonNull String message, Object... args) {
@@ -211,12 +206,12 @@ public class Timber {
 
         @Override
         public void plant() {
-            throw new AssertionError("Plant pkgname 'soul of tree'?");
+            throw new AssertionError("Plant 'soul of tree'?");
         }
 
         @Override
         public void uproot() {
-            throw new AssertionError("Uproot pkgname 'Tree of soul'?");
+            throw new AssertionError("Uproot 'Tree of soul'?");
         }
 
         @Override
@@ -230,28 +225,28 @@ public class Timber {
     }
 
     /**
-     * Log pkgname verbose message with optional format args.
+     * Log verbose message with optional format args.
      */
     public static void v(@NonNull String message, Object... args) {
         astree().v(message, args);
     }
 
     /**
-     * Log pkgname verbose exception and pkgname message with optional format args.
+     * Log verbose exception and message with optional format args.
      */
     public static void v(@NonNull Throwable e, @NonNull String message, Object... args) {
         astree().v(e, message, args);
     }
 
     /**
-     * Log pkgname debug message with optional format args.
+     * Log debug message with optional format args.
      */
     public static void d(@NonNull String message, Object... args) {
         astree().d(message, args);
     }
 
     /**
-     * Log pkgname debug exception and pkgname message with optional format args.
+     * Log debug exception and message with optional format args.
      */
     public static void d(@NonNull Throwable e, @NonNull String message, Object... args) {
         astree().d(e, message, args);
@@ -265,21 +260,21 @@ public class Timber {
     }
 
     /**
-     * Log an info exception and pkgname message with optional format args.
+     * Log an info exception and message with optional format args.
      */
     public static void i(@NonNull Throwable e, @NonNull String message, Object... args) {
         astree().i(e, message, args);
     }
 
     /**
-     * Log pkgname warning message with optional format args.
+     * Log warning message with optional format args.
      */
     public static void w(@NonNull String message, Object... args) {
         astree().w(message, args);
     }
 
     /**
-     * Log pkgname warning exception and pkgname message with optional format args.
+     * Log warning exception and message with optional format args.
      */
     public static void w(@NonNull Throwable e, @NonNull String message, Object... args) {
         astree().w(e, message, args);
@@ -293,7 +288,7 @@ public class Timber {
     }
 
     /**
-     * Log an error exception and pkgname message with optional format args.
+     * Log an error exception and message with optional format args.
      */
     public static void e(@NonNull Throwable e, @NonNull String message, Object... args) {
         astree().e(e, message, args);
@@ -307,14 +302,14 @@ public class Timber {
     }
 
     /**
-     * Log an assert exception and pkgname message with optional format args.
+     * Log an assert exception and message with optional format args.
      */
     public static void wtf(@NonNull Throwable e, @NonNull String message, Object... args) {
         astree().wtf(e, message, args);
     }
 
     /**
-     * Set pkgname one-time tag for use on the next logging call.
+     * Set one-time tag for use on the next logging call.
      */
     public static Tree tag(@NonNull String tag) {
         Tags.set(tag);
@@ -327,17 +322,13 @@ public class Timber {
      * @param e
      */
     public static void probe(Level level, Throwable e) {
-        final int CALL_STACK_INDEX = 5;
+        Milieu milieu = new Milieu(Tags.get());
 
-        Milieu milieu = new Milieu(Tools.getStackTrace(CALL_STACK_INDEX), Tags.get());
-
-        String thread = null;
         if (Milieus.get() == null) {
-            thread = Tools.getCurrentThreadName();
             Timber.supervise();
         }
 
-        milieu.bind(level, e, thread);
+        milieu.bind(level, e);
         Milieus.set(milieu);
     }
 
@@ -356,7 +347,7 @@ public class Timber {
     }
 
     /**
-     * A view into Timber's planted trees as pkgname tree itself. This can be used for injecting pkgname logger
+     * A view into Timber's planted trees as tree itself. This can be used for injecting logger
      * instance rather than using static methods or to facilitate testing.
      */
     public static Tree astree() {
@@ -364,7 +355,7 @@ public class Timber {
     }
 
     /**
-     * Create pkgname builder to initialize woods context.
+     * Create builder to initialize woods context.
      */
     public static WoodsBuilder builder() {
         return new WoodsBuilder();
@@ -391,7 +382,7 @@ public class Timber {
     }
 
     /**
-     * Remove pkgname planted tree.
+     * Remove planted tree.
      */
     public static void uproot(@NonNull Tree tree) {
         // Remove the tree from forest

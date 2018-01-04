@@ -29,48 +29,6 @@ import io.reactivex.schedulers.Schedulers;
 
 
 
-
-/**
- * logcat
- * Usage: logcat [options] [filterspecs]
- * options include:
- * -s              Set default filter to silent.
- * Like specifying filterspec '*:s'
- * -f <filename>   Log to file. Default to stdout
- * -r [<kbytes>]   Rotate log every kbytes. (16 if unspecified). Requires -f
- * -n <count>      Sets max number of rotated logs to <count>, default 4
- * -v <format>     Sets the log print format, where <format> is one of:
- * [brief, Proc, tag, thread, raw, time, threadtime, long]
- * -c              clear (flush) the entire log and exit
- * -d              dump the log and then exit (don't block)
- * -t <count>      print only the most recent <count> lines (implies -d)
- * -g              get the size of the log's ring buffer and exit
- * -b <buffer>     Request alternate ring buffer, 'main', 'system', 'radio'
- * or 'events'. Multiple -b parameters are allowed and the
- * results are interleaved. The default is -b main -b system.
- * -B              output the log in binary
- * <p>
- * filterspecs are pkgname series of <tag>[:priority]
- * <p>
- * where <tag> is pkgname log component tag (or * for all) and priority is:
- * V    Verbose
- * D    Debug
- * I    Info
- * W    Warn
- * E    Error
- * F    Fatal
- * S    Silent (supress all output)
- * <p>
- * '*' means '*:d' and <tag> by itself means <tag>:v
- * <p>
- * If not specified on the commandline, filterspec is set from ANDROID_LOG_TAGS.
- * If no filterspec is found, filter defaults to '*:I'
- * <p>
- * If not specified with -v, format is set from ANDROID_PRINTF_LOG
- * or defaults to "brief"
- */
-
-
 /**
  * A facade for handling logging calls.
  */
@@ -95,6 +53,7 @@ public class Wood implements Tree {
     private final static int E = Level.E.ordinal();
     private final static int A = Level.A.ordinal();
     private final static int S = Level.S.ordinal();
+
     /**
      * Logging policy that should be applied in order to control
      */
@@ -110,8 +69,6 @@ public class Wood implements Tree {
     private MemoThread MemoThread = null;
 
     private Level miniLevel = Level.W;
-
-    private volatile String threadId = null;
 
     /**
      * Called when tree is added into forest.
@@ -160,15 +117,6 @@ public class Wood implements Tree {
     }
 
     /**
-     * A view into Timber's planted trees as pkgname tree itself. This can be used for injecting pkgname logger
-     * instance rather than using static methods or to facilitate testing.
-     */
-    @Override
-    public Tree asTree() {
-        return this;
-    }
-
-    /**
      * Log verbose message with optional format args.
      */
     @Override
@@ -179,7 +127,7 @@ public class Wood implements Tree {
     }
 
     /**
-     * Log verbose exception and pkgname message with optional format args.
+     * Log verbose exception and message with optional format args.
      */
     @Override
     public void v(@NonNull Throwable t, @NonNull String message, Object... args) {
@@ -199,7 +147,7 @@ public class Wood implements Tree {
     }
 
     /**
-     * Log debug exception and pkgname message with optional format args.
+     * Log debug exception and message with optional format args.
      */
     @Override
     public void d(@NonNull Throwable t, @NonNull String message, Object... args) {
@@ -300,6 +248,13 @@ public class Wood implements Tree {
         return message;
     }
 
+    private String truncateNames(@NonNull String name) {
+        int MAXLEN = 8;
+        int l = name.length();
+
+        return name.substring(0, l > MAXLEN ? MAXLEN + 1 : l);
+    }
+
     /**
      * Get tag ready and Convert message & args to log string.
      *
@@ -309,7 +264,6 @@ public class Wood implements Tree {
      * @param args     Arguments used to format the message string.
      */
     private void log(int priority, Throwable t, @NonNull String message, Object... args) {
-
         String text = format(message, args);
 
         if (t != null) {
@@ -325,20 +279,32 @@ public class Wood implements Tree {
             return;
         }
 
-        if (threadId == null && m.thread != null && MemoSpec != null && MemoSpec.Thread != null) {
-            // Don't have target thread id and a new thread is detected and it is required to match thread name
-            Pattern pattern = Pattern.compile(MemoSpec.Thread);
-            Matcher matcher = pattern.matcher(Tools.getCurrentThreadName());
-            if (matcher.find()) {
-                threadId = String.valueOf(Tools.getCurrentThreadId());
-                startMemo(null);
-            }
+        String tag;
+        if (m.what != null)
+            tag = m.what;
+        else if (MemoSpec == null)
+            tag = m.who;
+        else {
+            // "[Class]@[Method]:[Thread]"
+            StringBuilder tb = new StringBuilder();
+            if (MemoSpec.Class != null && m.who.contains(MemoSpec.Class)) {
+                tb.append('_').append(truncateNames(MemoSpec.Class)).append('_');
+            } else
+                tb.append(m.who);
+
+            if (MemoSpec.Method != null && m.where.contains(MemoSpec.Method))
+                tb.append('@').append('_').append(truncateNames(MemoSpec.Method)).append('_');
+
+            if (MemoSpec.Thread != null && m.thread.contains(MemoSpec.Thread))
+                tb.append(':').append('_').append(truncateNames(MemoSpec.Thread)).append('_');
+
+            tag = tb.toString();
         }
 
         if (text.length() < MAX_LOG_LENGTH) {
-            Log.println(priority, m.what, text);
+            Log.println(priority, tag, text);
         } else {
-            println(priority, m.what, text);
+            println(priority, tag, text);
         }
     }
 
@@ -425,21 +391,17 @@ public class Wood implements Tree {
         return true;
     }
 
-    private void startMemo(String storedir) {
-        if (MemoThread == null) {
-            if (storedir == null)
-                return;
-            else
-                MemoThread = new MemoThread(storedir);
-        }
-
-        if (MemoSpec != null && MemoSpec.Thread != null && threadId == null) {
-            // Thread matching is required, however thread id is not known now.
+    private void startMemo(@NonNull String storedir) {
+        if (MemoSpec == null) {
             return;
         }
 
-        // No matter MemoSpec or MemoSpec.Thread is null, in both case threadId is null
-        MemoThread.startThread(miniLevel, threadId, MemoSpec);
+        if (MemoThread == null) {
+            MemoThread = new MemoThread(storedir);
+        }
+
+        // Thread is null by default
+        MemoThread.startThread(miniLevel, MemoSpec);
     }
 
     private void stopMemo() {
@@ -487,7 +449,7 @@ public class Wood implements Tree {
 
     private final class MemoThread extends Thread {
 
-        private int ProcId;
+        private int Pid;
 
         private Spec MemoSpec;
 
@@ -496,7 +458,10 @@ public class Wood implements Tree {
         /**
          * Logging Proc that should be applied in order to control
          */
-        private Process Proc = null;
+        volatile private Process Proc = null;
+
+        volatile Pattern MatchPattern = null;
+
 
         /**
          * Nothing to write with logging level WTF
@@ -506,34 +471,37 @@ public class Wood implements Tree {
 
         MemoThread(@NonNull String storedir) {
             Store = storedir;
-
-            ProcId = Tools.getHostProcessId();
         }
 
-        void startThread(@NonNull Level level, String thread, Spec spec) {
-            if (spec == null || MemoSpec != null)
+        void startThread(@NonNull Level level, @NonNull Spec spec) {
+            if (MemoSpec != null)
                 return;
 
             MemoSpec = new Spec();
 
             MemoSpec.Level = level;
 
-            if (thread != null)
-                MemoSpec.Thread = thread;
-            else
-                MemoSpec.Thread = "\\d+";
-
             if (spec.Class != null)
-                MemoSpec.Class = "\\w*" + spec.Class + "\\w*";
+                MemoSpec.Class = "\\w*" + truncateNames(spec.Class) + "\\w*";
             else
                 MemoSpec.Class = "\\w+";
 
             if (spec.Method != null)
-                MemoSpec.Method = "<\\w*" + spec.Method + "\\w*>";
+                MemoSpec.Method = "@\\w*" + truncateNames(spec.Method) + "\\w*";
             else
-                MemoSpec.Method = "(?:<\\w+>)?";
+                MemoSpec.Method = "";
 
-            String cli = buildCliCommand(MemoSpec.Level);
+            if (spec.Thread != null)
+                MemoSpec.Thread = ":\\w*" + truncateNames(spec.Thread) + "\\w*";
+            else
+                MemoSpec.Thread = "";
+
+            Pid = Tools.getHostProcessId();
+
+            MatchPattern = buildPattern(String.valueOf(Pid),
+                    MemoSpec.Class + MemoSpec.Method + MemoSpec.Thread);
+
+            String cli = buildCliCommand(MemoSpec.Level, Pid);
             try {
                 Proc = Runtime.getRuntime().exec(cli);
                 start();
@@ -552,8 +520,6 @@ public class Wood implements Tree {
 
         @Override
         public void run() {
-
-            Pattern pattern = buildPattern(ProcId, MemoSpec.Thread, MemoSpec.Class, MemoSpec.Method);
 
             createWriters();
 
@@ -576,12 +542,7 @@ public class Wood implements Tree {
                         continue;
                     }
 
-                    Matcher matcher = pattern.matcher(line);
-                    if (matcher.find()) {
-                        Level level = Level.valueOf(matcher.group(1));
-                        writeLogs(line, level.ordinal());
-                    }
-                    writeLogs(line, ALL);
+                    writeLines(MatchPattern, line);
                 }
             } catch (IOException e) {
                 /*
@@ -595,24 +556,38 @@ public class Wood implements Tree {
         }
 
 
-        private String buildCliCommand(@NonNull Level level) {
-            return "logcat -v threadtime *:" + level.name().toUpperCase();
+        private String buildCliCommand(@NonNull Level level, int pid) {
+            return String.format("logcat --pid=%s -v threadtime *:%s",
+                    String.valueOf(pid), level.name().toUpperCase());
         }
 
-        private Pattern buildPattern(int pid, String tid, String classtr, String methodstr) {
-            String patter_template = "\\b\\s+%d\\s+%s\\s+([VDWIEA])\\s+\\b%s%s";
+        private Pattern buildPattern(@NonNull String pid, @NonNull String tag) {
+            String template = "\\b\\s+%s\\s+\\d+\\s+([VDWIEA])\\s+\\b%s";
             return Pattern.compile(
-                    String.format(Locale.US, patter_template, pid, tid, classtr, methodstr));
+                    String.format(template, pid, tag));
         }
 
-        private void writeLogs(String line, int i) {
+        private void writeLines(Pattern pattern, String line) {
+            Matcher matcher = pattern.matcher(line);
             try {
-                if (i < Writers.length && Writers[i] != null) {
-                    Writers[i].write(line);
-                    Writers[i].write('\n');
+                Writers[ALL].write(line);
+                Writers[ALL].write('\n');
+
+                if (!matcher.find()) {
+                    return;
+                }
+
+                try {
+                    int i = Level.valueOf(matcher.group(1)).ordinal();
+                    if(Writers[i] != null) {
+                        Writers[i].write(line);
+                        Writers[i].write('\n');
+                    }
+                } catch (IllegalArgumentException e) {
+                    Timber.e(e, "Level parsing error: <%s>", line);
                 }
             } catch (IOException e) {
-                Timber.e(e, "I/O Stream Error. <Writer #%d>", i);
+                Timber.e(e, "I/O Stream Error. <%s>", line);
             }
         }
 
