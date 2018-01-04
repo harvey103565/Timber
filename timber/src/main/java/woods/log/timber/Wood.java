@@ -62,7 +62,7 @@ public class Wood implements Tree {
     /**
      * Logging policy that should be applied in order to control
      */
-    private boolean[] Valves = new boolean[S];
+    private boolean[] Valves = {false, false, false, true, true, true, true};
 
     private Disposable Disposable = null;
 

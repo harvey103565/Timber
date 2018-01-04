@@ -102,9 +102,8 @@ public class SampleActivity extends Activity implements ActivityCompat.OnRequest
 
         Timber.builder()
                 .addSeeds(Seed.class)
+                .addTrees(new Wood())
                 .build();
-
-        Timber.supervise();
     }
 
     private void testWoodsInThread() {
